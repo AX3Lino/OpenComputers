@@ -54,7 +54,7 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         NetSplitter.render(block, metadata, renderer)
         tessellator.draw()
 
-      case _: common.block.Transposer =>
+      case _@(_: common.block.Transposer | _: common.block.METransposer) =>
         GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
         tessellator.startDrawingQuads()
         Transposer.render(block, metadata, renderer)
@@ -119,7 +119,7 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         NetSplitter.render(ForgeDirection.VALID_DIRECTIONS.map(splitter.isSideOpen), block, x, y, z, renderer)
 
         true
-      case _: common.tileentity.Transposer =>
+      case _@(_: common.tileentity.Transposer | _: common.tileentity.METransposer) =>
         Transposer.render(block, x, y, z, renderer)
 
         true
@@ -135,7 +135,8 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
       block.isInstanceOf[common.block.Printer] ||
       block.isInstanceOf[common.block.Print] ||
       block.isInstanceOf[common.block.NetSplitter] ||
-      block.isInstanceOf[common.block.Transposer]
+      block.isInstanceOf[common.block.Transposer] ||
+      block.isInstanceOf[common.block.METransposer]
 
   val patchedRenderBlocksThreadLocal = new ThreadLocal[PatchedRenderBlocks]() {
     override def initialValue = new PatchedRenderBlocks()

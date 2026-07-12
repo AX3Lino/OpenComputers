@@ -711,6 +711,18 @@ transposer {
           [ingotIron, "oc:tankControllerUpgrade", ingotIron]]
   output: 4
 }
+meTransposer {
+  input: [[ingotIron, {item="appliedenergistics2:item.ItemMultiPart", subID=16}, ingotIron]
+          [{item="appliedenergistics2:item.ItemMultiPart", subID=16}, "oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=16}]
+          [ingotIron, {item="appliedenergistics2:tile.BlockInterface"}, ingotIron]]
+}
+
+meDualTransposer {
+  input: [[ingotIron, {item="appliedenergistics2:item.ItemMultiPart", subID=16}, ingotIron]
+          [bucket, "oc:meTransposer", bucket]
+          [ingotIron, "oc:tankControllerUpgrade", ingotIron]]
+}
+
 waypoint {
   input: [[ingotIron, "oc:circuitChip1", ingotIron]
           ["oc:materialTransistor", "oc:materialInterweb", "oc:materialTransistor"],

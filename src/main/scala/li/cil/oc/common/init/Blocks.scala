@@ -89,5 +89,13 @@ object Blocks {
 
     // v1.7.2
     Recipes.addBlock(new CarpetedCapacitor(), Constants.BlockName.CarpetedCapacitor, "oc:carpetedCapacitor")
+
+    // ME Transposers (require Applied Energistics 2 for their ME grid node).
+    if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
+      GameRegistry.registerTileEntity(classOf[tileentity.METransposer], Settings.namespace + "meTransposer")
+      GameRegistry.registerTileEntity(classOf[tileentity.MEDualTransposer], Settings.namespace + "meDualTransposer")
+      Recipes.addBlock(new METransposer(), Constants.BlockName.METransposer, "oc:meTransposer")
+      Recipes.addBlock(new MEDualTransposer(), Constants.BlockName.MEDualTransposer, "oc:meDualTransposer")
+    }
   }
 }

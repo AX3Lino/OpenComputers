@@ -42,6 +42,8 @@ tile.oc.rack.name=Rack
 tile.oc.switch.name=§cSwitch§7
 tile.oc.transposer.name=Transposer
 tile.oc.transposer.tooltip=Transfers up to %s L/s
+tile.oc.meTransposer.name=ME Transposer
+tile.oc.meDualTransposer.name=ME Dual Transposer
 tile.oc.waypoint.name=Waypoint
 
 # Items
@@ -386,6 +388,8 @@ oc:tooltip.NetSplitter=Acts as a dynamic connector. Connectivity of each side ca
 oc:tooltip.TooLong=Hold [§f%s§7] for a detailed tooltip.
 oc:tooltip.Transistor=A basic element in most other computer parts. It's a bit twisted, but it does the job.
 oc:tooltip.Transposer=Allows automated transferral of items and fluids between adjacent inventories and fluid containers.
+oc:tooltip.METransposer=An upgraded Transposer that can additionally move items in and out of an attached ME network, addressed as the virtual side "me". Requires an ME channel; ME operations draw power from both networks.
+oc:tooltip.MEDualTransposer=An upgraded ME Transposer that can move items and fluids in and out of an attached ME network, addressed as the virtual side "me". Requires an ME channel; ME operations draw power from both networks.
 oc:tooltip.UpgradeAngel=Allows robots to place blocks in thin air, even if there is no point of reference.
 oc:tooltip.UpgradeBattery=Increase the amount of energy a device can store, allowing it work longer without having to be recharged. [nl] Capacity: §f%s§7
 oc:tooltip.UpgradeChunkloader=If a robot moves in a forest and no one is around to see it, does it really move? This upgrades makes sure it does. It keeps the chunk a device is in loaded, but continually consumes energy while active.

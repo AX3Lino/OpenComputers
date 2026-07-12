@@ -799,7 +799,7 @@ object PacketSender {
     pb.sendToNearbyPlayers(world, x, y, z, Option(Settings.get.maxNetworkClientSoundPacketDistance))
   }
 
-  def sendTransposerActivity(t: tileentity.Transposer) {
+  def sendTransposerActivity(t: TransposerActivity) {
     val pb = new SimplePacketBuilder(PacketType.TransposerActivity)
 
     pb.writeTileEntity(t)

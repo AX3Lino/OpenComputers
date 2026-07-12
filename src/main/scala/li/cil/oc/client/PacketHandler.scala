@@ -820,7 +820,7 @@ object PacketHandler extends CommonPacketHandler {
   }
 
   def onTransposerActivity(p: PacketParser) =
-    p.readTileEntity[Transposer]() match {
+    p.readTileEntity[traits.TransposerActivity]() match {
       case Some(transposer) => transposer.lastOperation = System.currentTimeMillis()
       case _ => // Invalid packet.
     }
