@@ -91,11 +91,18 @@ object Blocks {
     Recipes.addBlock(new CarpetedCapacitor(), Constants.BlockName.CarpetedCapacitor, "oc:carpetedCapacitor")
 
     // ME Transposers (require Applied Energistics 2 for their ME grid node).
+    // One block per fluid transfer rate tier, same tile entity class shared
+    // by all of them (registered once, matching how Screen1/2/3 share one
+    // "screen" tile entity registration).
     if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
       GameRegistry.registerTileEntity(classOf[tileentity.METransposer], Settings.namespace + "meTransposer")
       GameRegistry.registerTileEntity(classOf[tileentity.MEDualTransposer], Settings.namespace + "meDualTransposer")
-      Recipes.addBlock(new METransposer(), Constants.BlockName.METransposer, "oc:meTransposer")
-      Recipes.addBlock(new MEDualTransposer(), Constants.BlockName.MEDualTransposer, "oc:meDualTransposer")
+      for ((suffix, rate) <- Constants.METransposerRateTiers) {
+        val meName = Constants.BlockName.METransposer + suffix
+        Recipes.addBlock(new METransposer(rate), meName, "oc:" + meName)
+        val dualName = Constants.BlockName.MEDualTransposer + suffix
+        Recipes.addBlock(new MEDualTransposer(rate), dualName, "oc:" + dualName)
+      }
     }
   }
 }

@@ -19,10 +19,18 @@ import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraftforge.common.util.ForgeDirection
 
-class METransposer extends traits.Environment with traits.TransposerActivity with IGridProxyable with IActionHost with IPowerChannelState {
+/**
+ * `rate` is fixed by which block variant this is (see Constants.METransposerRateTiers
+ * and common/block/METransposer.scala) - it's only a `var` and NBT-persisted here
+ * because Minecraft reloads tile entities via a no-arg constructor + NBT, bypassing
+ * the block that originally placed it.
+ */
+class METransposer(var rate: Int) extends traits.Environment with traits.TransposerActivity with IGridProxyable with IActionHost with IPowerChannelState {
+  def this() = this(Constants.METransposerRateTiers.head._2)
+
   protected def blockName = Constants.BlockName.METransposer
 
-  protected def createComponent: component.METransposer = new component.METransposer(this)
+  protected def createComponent: component.METransposer.Common = new component.METransposer.Block(this)
 
   val metransposer = createComponent
 
@@ -84,12 +92,14 @@ class METransposer extends traits.Environment with traits.TransposerActivity wit
 
   override def readFromNBTForServer(nbt: NBTTagCompound) {
     super.readFromNBTForServer(nbt)
+    if (nbt.hasKey(Settings.namespace + "rate")) rate = nbt.getInteger(Settings.namespace + "rate")
     metransposer.load(nbt)
     gridProxy.readFromNBT(nbt)
   }
 
   override def writeToNBTForServer(nbt: NBTTagCompound) {
     super.writeToNBTForServer(nbt)
+    nbt.setInteger(Settings.namespace + "rate", rate)
     metransposer.save(nbt)
     gridProxy.writeToNBT(nbt)
   }

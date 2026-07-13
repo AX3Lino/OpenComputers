@@ -301,40 +301,44 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.UpgradeAE3
     )
     blacklistHost(classOf[internal.Robot],
-      Constants.BlockName.Transposer,
-      Constants.BlockName.CarpetedCapacitor,
-      Constants.ItemName.Analyzer,
-      Constants.ItemName.LeashUpgrade,
-      Constants.ItemName.RITEGUpgrade
+      (Seq(
+        Constants.BlockName.Transposer,
+        Constants.BlockName.CarpetedCapacitor,
+        Constants.ItemName.Analyzer,
+        Constants.ItemName.LeashUpgrade,
+        Constants.ItemName.RITEGUpgrade
+      ) ++ Constants.METransposerAllNames ++ Constants.MEDualTransposerAllNames): _*
     )
     blacklistHost(classOf[internal.Tablet],
-      Constants.BlockName.ScreenTier1,
-      Constants.BlockName.Transposer,
-      Constants.BlockName.CarpetedCapacitor,
-      Constants.ItemName.NetworkCard,
-      Constants.ItemName.RedstoneCardTier1,
-      Constants.ItemName.AngelUpgrade,
-      Constants.ItemName.ChunkloaderUpgrade,
-      Constants.ItemName.CraftingUpgrade,
-      Constants.ItemName.ArcaneCraftingUpgrade,
-      Constants.ItemName.DatabaseUpgradeTier1,
-      Constants.ItemName.DatabaseUpgradeTier2,
-      Constants.ItemName.DatabaseUpgradeTier3,
-      Constants.ItemName.ExperienceUpgrade,
-      Constants.ItemName.GeneratorUpgrade,
-      Constants.ItemName.HoverUpgradeTier1,
-      Constants.ItemName.HoverUpgradeTier2,
-      Constants.ItemName.InventoryUpgrade,
-      Constants.ItemName.InventoryControllerUpgrade,
-      Constants.ItemName.TankUpgrade,
-      Constants.ItemName.TankControllerUpgrade,
-      Constants.ItemName.LeashUpgrade,
-      Constants.ItemName.TradingUpgrade,
-      Constants.ItemName.BeekeeperUpgrade,
-      Constants.ItemName.ConfiguratorUpgrade,
-      Constants.ItemName.UpgradeAE1,
-      Constants.ItemName.UpgradeAE2,
-      Constants.ItemName.UpgradeAE3
+      (Seq(
+        Constants.BlockName.ScreenTier1,
+        Constants.BlockName.Transposer,
+        Constants.BlockName.CarpetedCapacitor,
+        Constants.ItemName.NetworkCard,
+        Constants.ItemName.RedstoneCardTier1,
+        Constants.ItemName.AngelUpgrade,
+        Constants.ItemName.ChunkloaderUpgrade,
+        Constants.ItemName.CraftingUpgrade,
+        Constants.ItemName.ArcaneCraftingUpgrade,
+        Constants.ItemName.DatabaseUpgradeTier1,
+        Constants.ItemName.DatabaseUpgradeTier2,
+        Constants.ItemName.DatabaseUpgradeTier3,
+        Constants.ItemName.ExperienceUpgrade,
+        Constants.ItemName.GeneratorUpgrade,
+        Constants.ItemName.HoverUpgradeTier1,
+        Constants.ItemName.HoverUpgradeTier2,
+        Constants.ItemName.InventoryUpgrade,
+        Constants.ItemName.InventoryControllerUpgrade,
+        Constants.ItemName.TankUpgrade,
+        Constants.ItemName.TankControllerUpgrade,
+        Constants.ItemName.LeashUpgrade,
+        Constants.ItemName.TradingUpgrade,
+        Constants.ItemName.BeekeeperUpgrade,
+        Constants.ItemName.ConfiguratorUpgrade,
+        Constants.ItemName.UpgradeAE1,
+        Constants.ItemName.UpgradeAE2,
+        Constants.ItemName.UpgradeAE3
+      ) ++ Constants.METransposerAllNames ++ Constants.MEDualTransposerAllNames): _*
     )
 
     if (!WirelessRedstone.isAvailable) {

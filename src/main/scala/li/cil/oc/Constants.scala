@@ -49,6 +49,29 @@ object Constants {
     def Case(tier: Int) = ItemUtils.caseNameWithTierSuffix("case", tier)
   }
 
+  // Fluid transfer rate tiers for the meTransposer/meDualTransposer block
+  // variants, matching GT fluid regulator tiers ("" is the base, untiered
+  // rate). Each tier is registered as its own separate block/item, the same
+  // way OC itself does screen1/screen2/screen3, rather than a single item
+  // carrying the rate as NBT.
+  val METransposerRateTiers: Seq[(String, Int)] = Seq(
+    "" -> 2560,
+    "HV" -> 10240,
+    "EV" -> 40960,
+    "IV" -> 163840,
+    "LuV" -> 655360,
+    "ZPM" -> 2621440,
+    "UV" -> 10485760,
+    "UHV" -> 20971520,
+    "UEV" -> 41943040,
+    "UIV" -> 83886080,
+    "UMV" -> 167772160,
+    "UXV" -> 335544320
+  )
+
+  val METransposerAllNames: Seq[String] = METransposerRateTiers.map(t => BlockName.METransposer + t._1)
+  val MEDualTransposerAllNames: Seq[String] = METransposerRateTiers.map(t => BlockName.MEDualTransposer + t._1)
+
   object ItemName {
     final val AbstractBusCard = "abstractBusCard"
     final val Acid = "acid"

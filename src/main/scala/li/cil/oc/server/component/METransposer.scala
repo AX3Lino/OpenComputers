@@ -4,21 +4,26 @@ import java.util
 
 import appeng.api.AEApi
 import appeng.api.config.Actionable
+import appeng.api.networking.security.IActionHost
 import appeng.api.networking.security.MachineSource
 import appeng.api.storage.data.IAEItemStack
 import appeng.me.GridAccessException
+import appeng.me.helpers.AENetworkProxy
+import appeng.me.helpers.IGridProxyable
 import appeng.util.Platform
 import li.cil.oc.Constants
 import li.cil.oc.Settings
 import li.cil.oc.api
+import li.cil.oc.api.driver.DeviceInfo
 import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
 import li.cil.oc.api.driver.DeviceInfo.DeviceClass
-import li.cil.oc.api.driver.DeviceInfo
 import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Callback
 import li.cil.oc.api.machine.Context
+import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.api.prefab
+import li.cil.oc.common.item.data.TransposerData
 import li.cil.oc.common.tileentity
 import li.cil.oc.integration.appeng.AEStackFactory
 import li.cil.oc.server.{PacketSender => ServerPacketSender}
@@ -31,187 +36,243 @@ import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.convert.WrapAsJava._
 
-/**
- * A Transposer whose seventh, virtual side is an ME network, for items only.
- * All transposer callbacks are inherited unchanged; the item transfer
- * callback additionally accepts the string "me" (or the side number 6) as
- * source or sink. See MEDualTransposer for the fluid-capable variant.
- *
- * Deliberately self-contained (does not extend Transposer.Common) so that
- * shared OpenComputers files stay untouched.
- */
-class METransposer(val host: tileentity.METransposer) extends prefab.ManagedEnvironment with traits.WorldInventoryAnalytics with traits.WorldTankAnalytics with traits.WorldFluidContainerAnalytics with traits.InventoryTransfer with traits.FluidContainerTransfer with DeviceInfo {
-  protected def componentName = "me_transposer"
+object METransposer {
 
-  override val node = api.Network.newNode(this, Visibility.Network).
-    withComponent(componentName).
-    withConnector().
-    create()
+  /**
+   * Shared behavior for both the standalone block and the microcontroller
+   * upgrade card. Concrete transposer callbacks (side numbers 0-5) come
+   * unchanged from the mixed-in traits; only "me" side handling lives here.
+   * `proxy` is the seam between the two hosts: the block always has one, the
+   * upgrade card only does when installed in a host that itself exposes an
+   * AE2 grid connection (currently just Microcontroller).
+   */
+  abstract class Common extends prefab.ManagedEnvironment with traits.WorldInventoryAnalytics with traits.WorldTankAnalytics with traits.WorldFluidContainerAnalytics with traits.InventoryTransfer with traits.FluidContainerTransfer with DeviceInfo {
+    protected def componentName = "me_transposer"
 
-  override def position = BlockPosition(host)
+    override val node = api.Network.newNode(this, Visibility.Network).
+      withComponent(componentName).
+      withConnector().
+      create()
 
-  private final lazy val deviceInfo = Map(
-    DeviceAttribute.Class -> DeviceClass.Generic,
-    DeviceAttribute.Description -> "ME Transposer",
-    DeviceAttribute.Vendor -> Constants.DeviceInfo.DefaultVendor,
-    DeviceAttribute.Product -> "TP-ME1"
-  )
+    protected def proxy: Option[AENetworkProxy]
 
-  override def getDeviceInfo: util.Map[String, String] = deviceInfo
+    protected def actionHost: IActionHost
 
-  override protected def checkSideForAction(args: Arguments, n: Int) = args.checkSideAny(n)
+    private final lazy val deviceInfo = Map(
+      DeviceAttribute.Class -> DeviceClass.Generic,
+      DeviceAttribute.Description -> "ME Transposer",
+      DeviceAttribute.Vendor -> Constants.DeviceInfo.DefaultVendor,
+      DeviceAttribute.Product -> "TP-ME1"
+    )
 
-  override def onTransferContents(): Option[String] = {
-    if (node.tryChangeBuffer(-Settings.get.meTransposerCost)) {
-      ServerPacketSender.sendTransposerActivity(host)
-      None
+    override def getDeviceInfo: util.Map[String, String] = deviceInfo
+
+    override protected def checkSideForAction(args: Arguments, n: Int) = args.checkSideAny(n)
+
+    override def onTransferContents(): Option[String] = {
+      if (node.tryChangeBuffer(-Settings.get.meTransposerCost)) None
+      else Option("not enough energy")
     }
-    else Option("not enough energy")
-  }
 
-  override def fluidTransferRate(): Int = Settings.get.transposerFluidTransferRate
-
-  // ----------------------------------------------------------------------- //
-  // The virtual ME side.
-
-  protected def isMe(args: Arguments, index: Int) =
-    (args.isString(index) && args.checkString(index).equalsIgnoreCase("me")) ||
-      (args.isInteger(index) && args.checkInteger(index) == ForgeDirection.UNKNOWN.ordinal)
-
-  @Callback(doc = """function():boolean -- Get whether the device is actively connected to an ME network (powered and got a channel).""")
-  def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(host.getProxy.isActive)
-
-  // ----------------------------------------------------------------------- //
-  // Filter parsing for ME requests: either a descriptor table (see
-  // AEStackFactory) or a database address plus entry index. The filter sits
-  // at argument index 2 (count omitted) or 3 (count given).
-
-  protected def filterIndex(args: Arguments): Int =
-    Seq(2, 3).find(i => i < args.count && (args.isTable(i) || args.isString(i))).getOrElse(-1)
-
-  /** Returns the parsed stack (or null) and the argument index following the filter. */
-  private def parseItemFilter(args: Arguments, offset: Int, amount: Int): (IAEItemStack, Int) = {
-    if (args.isTable(offset)) {
-      val stack = Option(AEStackFactory.parse[IAEItemStack](args.checkTable(offset))).map { s =>
-        s.setStackSize(amount)
-        s
-      }.orNull
-      (stack, offset + 1)
+    /**
+     * Fluid transfer rate for an upgrade card: looked up from the NBT tag on
+     * the matching card ItemStack among the microcontroller's installed
+     * components, mirroring how the vanilla Transposer.Upgrade reads a
+     * boosted rate off its own card (e.g. from GT fluid regulators baked
+     * into the crafting recipe elsewhere) — falls back to the flat setting
+     * if untagged, and to 0 for hosts that aren't a Microcontroller.
+     */
+    protected def upgradeFluidTransferRate(host: EnvironmentHost, cardBlockName: String): Int = host match {
+      case microcontroller: tileentity.Microcontroller =>
+        microcontroller.info.components.find(_.isItemEqual(api.Items.get(cardBlockName).createItemStack(1)))
+          .filter(_.hasTagCompound)
+          .map(_.getTagCompound)
+          .filter(_.hasKey(TransposerData.FLUID_TRANSFER_RATE))
+          .map(_.getInteger(TransposerData.FLUID_TRANSFER_RATE))
+          .getOrElse(Settings.get.transposerFluidTransferRate)
+      case _ => 0
     }
-    else {
-      val stack = Option(DatabaseAccess.getStackFromDatabase(node, args, offset)).map { s =>
-        val aes = AEApi.instance.storage.createItemStack(s)
-        aes.setStackSize(amount)
-        aes
-      }.orNull
-      (stack, offset + 2)
-    }
-  }
 
-  // ----------------------------------------------------------------------- //
-  // Item transfers.
+    // ----------------------------------------------------------------------- //
+    // The virtual ME side.
 
-  @Callback(doc = """function(sourceSide, sinkSide[, count:number[, sourceSlot:number[, sinkSlot:number]]]):number -- Transfer some items between two inventories. Either side may also be the string "me" (or 6) for the ME network; pulling from ME requires a filter (table or dbAddress:string, dbEntry:number) in place of sourceSlot.""")
-  override def transferItem(context: Context, args: Arguments): Array[AnyRef] = {
-    val sourceIsMe = isMe(args, 0)
-    val sinkIsMe = isMe(args, 1)
-    if (sourceIsMe && sinkIsMe) result(Unit, "source and sink cannot both be the ME network")
-    else if (!sourceIsMe && !sinkIsMe) super.transferItem(context, args)
-    else onTransferContents() match {
-      case Some(reason) => result(Unit, reason)
-      case _ =>
-        if (sourceIsMe) transferItemFromMe(args)
-        else transferItemToMe(args)
-    }
-  }
+    protected def isMe(args: Arguments, index: Int) =
+      (args.isString(index) && args.checkString(index).equalsIgnoreCase("me")) ||
+        (args.isInteger(index) && args.checkInteger(index) == ForgeDirection.UNKNOWN.ordinal)
 
-  @Callback(doc = """function(sourceSide:number, sinkSide:number, sourceSlot:number, sinkSlot:number[, safe:boolean]):boolean -- Swap two inventory slots if and only if both directions succeed. Safe swaps require two non-empty slots. The ME network cannot take part in swaps.""")
-  override def swap(context: Context, args: Arguments): Array[AnyRef] = {
-    if (isMe(args, 0) || isMe(args, 1)) result(Unit, "cannot swap with the ME network")
-    else super.swap(context, args)
-  }
+    @Callback(doc = """function():boolean -- Get whether the device is actively connected to an ME network (powered and got a channel).""")
+    def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
 
-  @Callback(doc = """function(sourceSide:number, sinkSide:number[, count:number [, sourceTank:number]]):boolean, number -- Transfer some fluid between two tanks. Returns operation result and filled amount""")
-  override def transferFluid(context: Context, args: Arguments): Array[AnyRef] = {
-    if (isMe(args, 0) || isMe(args, 1)) result(Unit, "this device cannot transfer fluids to or from the ME network")
-    else super.transferFluid(context, args)
-  }
+    // ----------------------------------------------------------------------- //
+    // Filter parsing for ME requests: either a descriptor table (see
+    // AEStackFactory) or a database address plus entry index. The filter sits
+    // at argument index 2 (count omitted) or 3 (count given).
 
-  private def transferItemFromMe(args: Arguments): Array[AnyRef] = {
-    val sinkSide = checkSideForAction(args, 1)
-    val sinkPos = position.offset(sinkSide)
-    val filterAt = filterIndex(args)
-    if (filterAt < 0) return result(Unit, "filter required when pulling from the ME network")
-    val count = if (filterAt > 2) args.optItemCount(2) else 64
+    protected def filterIndex(args: Arguments): Int =
+      Seq(2, 3).find(i => i < args.count && (args.isTable(i) || args.isString(i))).getOrElse(-1)
 
-    val (request, nextIndex) = parseItemFilter(args, filterAt, count)
-    if (request == null) return result(Unit, "invalid filter")
-
-    val inventory = InventoryUtils.inventoryAt(sinkPos).getOrElse(return result(Unit, "no inventory"))
-    val sinkSlot = args.optSlot(inventory, nextIndex, -1)
-
-    try {
-      val proxy = host.getProxy
-      if (!proxy.isActive) return result(Unit, "no ME network")
-      val storage = proxy.getStorage.getItemInventory
-      val energy = proxy.getEnergy
-      val source = new MachineSource(host)
-
-      // Simulate insertion to figure out how much actually fits, then do a
-      // powered extraction from the network and commit the insert. Whatever
-      // could not be inserted after all is returned to the network.
-      val simulated = request.getItemStack
-      val fits =
-        if (sinkSlot < 0) InventoryUtils.insertIntoInventory(simulated, inventory, Option(sinkSide.getOpposite), count, simulate = true)
-        else InventoryUtils.insertIntoInventorySlot(simulated, inventory, Option(sinkSide.getOpposite), sinkSlot, count, simulate = true)
-      if (!fits) return result(0)
-
-      request.setStackSize(count - simulated.stackSize)
-      val extracted = Platform.poweredExtraction(energy, storage, request, source)
-      if (extracted == null || extracted.getStackSize == 0) return result(0)
-
-      val stack = extracted.getItemStack
-      var moved = stack.stackSize
-      if (sinkSlot < 0) InventoryUtils.insertIntoInventory(stack, inventory, Option(sinkSide.getOpposite))
-      else InventoryUtils.insertIntoInventorySlot(stack, inventory, Option(sinkSide.getOpposite), sinkSlot)
-      if (stack.stackSize > 0) {
-        moved -= stack.stackSize
-        val leftover = extracted.copy()
-        leftover.setStackSize(stack.stackSize)
-        storage.injectItems(leftover, Actionable.MODULATE, source)
+    /** Returns the parsed stack (or null) and the argument index following the filter. */
+    protected def parseItemFilter(args: Arguments, offset: Int, amount: Int): (IAEItemStack, Int) = {
+      if (args.isTable(offset)) {
+        val stack = Option(AEStackFactory.parse[IAEItemStack](args.checkTable(offset))).map { s =>
+          s.setStackSize(amount)
+          s
+        }.orNull
+        (stack, offset + 1)
       }
-      result(moved)
+      else {
+        val stack = Option(DatabaseAccess.getStackFromDatabase(node, args, offset)).map { s =>
+          val aes = AEApi.instance.storage.createItemStack(s)
+          aes.setStackSize(amount)
+          aes
+        }.orNull
+        (stack, offset + 2)
+      }
     }
-    catch {
-      case _: GridAccessException => result(Unit, "no ME network")
+
+    // ----------------------------------------------------------------------- //
+    // Item transfers.
+
+    @Callback(doc = """function(sourceSide, sinkSide[, count:number[, sourceSlot:number[, sinkSlot:number]]]):number -- Transfer some items between two inventories. Either side may also be the string "me" (or 6) for the ME network; pulling from ME requires a filter (table or dbAddress:string, dbEntry:number) in place of sourceSlot.""")
+    override def transferItem(context: Context, args: Arguments): Array[AnyRef] = {
+      val sourceIsMe = isMe(args, 0)
+      val sinkIsMe = isMe(args, 1)
+      if (sourceIsMe && sinkIsMe) result(Unit, "source and sink cannot both be the ME network")
+      else if (!sourceIsMe && !sinkIsMe) super.transferItem(context, args)
+      else onTransferContents() match {
+        case Some(reason) => result(Unit, reason)
+        case _ =>
+          if (sourceIsMe) transferItemFromMe(args)
+          else transferItemToMe(args)
+      }
+    }
+
+    @Callback(doc = """function(sourceSide:number, sinkSide:number, sourceSlot:number, sinkSlot:number[, safe:boolean]):boolean -- Swap two inventory slots if and only if both directions succeed. Safe swaps require two non-empty slots. The ME network cannot take part in swaps.""")
+    override def swap(context: Context, args: Arguments): Array[AnyRef] = {
+      if (isMe(args, 0) || isMe(args, 1)) result(Unit, "cannot swap with the ME network")
+      else super.swap(context, args)
+    }
+
+    @Callback(doc = """function(sourceSide:number, sinkSide:number[, count:number [, sourceTank:number]]):boolean, number -- Transfer some fluid between two tanks. Returns operation result and filled amount""")
+    override def transferFluid(context: Context, args: Arguments): Array[AnyRef] = {
+      if (isMe(args, 0) || isMe(args, 1)) result(Unit, "this device cannot transfer fluids to or from the ME network")
+      else super.transferFluid(context, args)
+    }
+
+    private def transferItemFromMe(args: Arguments): Array[AnyRef] = {
+      val sinkSide = checkSideForAction(args, 1)
+      val sinkPos = position.offset(sinkSide)
+      val filterAt = filterIndex(args)
+      if (filterAt < 0) return result(Unit, "filter required when pulling from the ME network")
+      val count = if (filterAt > 2) args.optItemCount(2) else 64
+
+      val (request, nextIndex) = parseItemFilter(args, filterAt, count)
+      if (request == null) return result(Unit, "invalid filter")
+
+      val inventory = InventoryUtils.inventoryAt(sinkPos).getOrElse(return result(Unit, "no inventory"))
+      val sinkSlot = args.optSlot(inventory, nextIndex, -1)
+
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      try {
+        if (!p.isActive) return result(Unit, "no ME network")
+        val storage = p.getStorage.getItemInventory
+        val energy = p.getEnergy
+        val source = new MachineSource(actionHost)
+
+        // Simulate insertion to figure out how much actually fits, then do a
+        // powered extraction from the network and commit the insert. Whatever
+        // could not be inserted after all is returned to the network.
+        val simulated = request.getItemStack
+        val fits =
+          if (sinkSlot < 0) InventoryUtils.insertIntoInventory(simulated, inventory, Option(sinkSide.getOpposite), count, simulate = true)
+          else InventoryUtils.insertIntoInventorySlot(simulated, inventory, Option(sinkSide.getOpposite), sinkSlot, count, simulate = true)
+        if (!fits) return result(0)
+
+        request.setStackSize(count - simulated.stackSize)
+        val extracted = Platform.poweredExtraction(energy, storage, request, source)
+        if (extracted == null || extracted.getStackSize == 0) return result(0)
+
+        val stack = extracted.getItemStack
+        var moved = stack.stackSize
+        if (sinkSlot < 0) InventoryUtils.insertIntoInventory(stack, inventory, Option(sinkSide.getOpposite))
+        else InventoryUtils.insertIntoInventorySlot(stack, inventory, Option(sinkSide.getOpposite), sinkSlot)
+        if (stack.stackSize > 0) {
+          moved -= stack.stackSize
+          val leftover = extracted.copy()
+          leftover.setStackSize(stack.stackSize)
+          storage.injectItems(leftover, Actionable.MODULATE, source)
+        }
+        result(moved)
+      }
+      catch {
+        case _: GridAccessException => result(Unit, "no ME network")
+      }
+    }
+
+    private def transferItemToMe(args: Arguments): Array[AnyRef] = {
+      val sourceSide = checkSideForAction(args, 0)
+      val sourcePos = position.offset(sourceSide)
+      val count = args.optItemCount(2)
+      val inventory = InventoryUtils.inventoryAt(sourcePos).getOrElse(return result(Unit, "no inventory"))
+      val sourceSlot = args.optSlot(inventory, 3, -1)
+
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      try {
+        if (!p.isActive) return result(Unit, "no ME network")
+        val storage = p.getStorage.getItemInventory
+        val energy = p.getEnergy
+        val source = new MachineSource(actionHost)
+
+        val consumer = (stack: ItemStack) => {
+          val leftover = Platform.poweredInsert(energy, storage, AEApi.instance.storage.createItemStack(stack), source)
+          stack.stackSize = if (leftover == null) 0 else leftover.getStackSize.toInt
+        }
+        val moved =
+          if (sourceSlot < 0) InventoryUtils.extractAnyFromInventory(consumer, inventory, sourceSide.getOpposite, count)
+          else InventoryUtils.extractFromInventorySlot(consumer, inventory, sourceSide.getOpposite, sourceSlot, count)
+        result(moved)
+      }
+      catch {
+        case _: GridAccessException => result(Unit, "no ME network")
+      }
     }
   }
 
-  private def transferItemToMe(args: Arguments): Array[AnyRef] = {
-    val sourceSide = checkSideForAction(args, 0)
-    val sourcePos = position.offset(sourceSide)
-    val count = args.optItemCount(2)
-    val inventory = InventoryUtils.inventoryAt(sourcePos).getOrElse(return result(Unit, "no inventory"))
-    val sourceSlot = args.optSlot(inventory, 3, -1)
+  /** Hosted by the ME Transposer block's own tile entity. */
+  class Block(val host: tileentity.METransposer) extends Common {
+    override def position = BlockPosition(host)
 
-    try {
-      val proxy = host.getProxy
-      if (!proxy.isActive) return result(Unit, "no ME network")
-      val storage = proxy.getStorage.getItemInventory
-      val energy = proxy.getEnergy
-      val source = new MachineSource(host)
+    override protected def proxy = Some(host.getProxy)
 
-      val consumer = (stack: ItemStack) => {
-        val leftover = Platform.poweredInsert(energy, storage, AEApi.instance.storage.createItemStack(stack), source)
-        stack.stackSize = if (leftover == null) 0 else leftover.getStackSize.toInt
-      }
-      val moved =
-        if (sourceSlot < 0) InventoryUtils.extractAnyFromInventory(consumer, inventory, sourceSide.getOpposite, count)
-        else InventoryUtils.extractFromInventorySlot(consumer, inventory, sourceSide.getOpposite, sourceSlot, count)
-      result(moved)
+    override protected def actionHost: IActionHost = host
+
+    override def fluidTransferRate(): Int = host.rate
+
+    override def onTransferContents(): Option[String] = {
+      val result = super.onTransferContents()
+      if (result.isEmpty) ServerPacketSender.sendTransposerActivity(host)
+      result
     }
-    catch {
-      case _: GridAccessException => result(Unit, "no ME network")
+  }
+
+  /**
+   * Hosted as a microcontroller build component (Slot.Upgrade). Only reaches
+   * an ME network if `host` itself exposes an AE2 grid connection (see
+   * Microcontroller.scala); on hosts that don't (e.g. Robot, Drone), "me"
+   * side transfers cleanly report "no ME network" rather than failing.
+   */
+  class Upgrade(val host: EnvironmentHost) extends Common {
+    node.setVisibility(Visibility.Neighbors)
+
+    override def position = BlockPosition(host)
+
+    override protected def proxy = host match {
+      case p: IGridProxyable => Some(p.getProxy)
+      case _ => None
     }
+
+    override protected def actionHost: IActionHost = host.asInstanceOf[IActionHost]
+
+    override def fluidTransferRate(): Int = upgradeFluidTransferRate(host, Constants.BlockName.METransposer)
   }
 }
