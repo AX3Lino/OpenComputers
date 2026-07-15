@@ -90,12 +90,7 @@ object Blocks {
     // v1.7.2
     Recipes.addBlock(new CarpetedCapacitor(), Constants.BlockName.CarpetedCapacitor, "oc:carpetedCapacitor")
 
-    // ME Transposers (require Applied Energistics 2 for their ME grid node).
-    // Fluid transfer rate is NBT (FLUID_TRANSFER_RATE, see common/item/data/
-    // TransposerData.scala), same as vanilla Transposer's own fluid
-    // regulator boost - not a separate block/item per tier. Any tiering on
-    // top of the flat rate lives entirely in NewHorizonsCoreMod, same as it
-    // already does for vanilla Transposer.
+    // Requires Applied Energistics 2 for their ME grid node.
     if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
       GameRegistry.registerTileEntity(classOf[tileentity.METransposer], Settings.namespace + "meTransposer")
       GameRegistry.registerTileEntity(classOf[tileentity.MEDualTransposer], Settings.namespace + "meDualTransposer")
@@ -103,10 +98,6 @@ object Blocks {
       Recipes.addBlock(new MEDualTransposer(), Constants.BlockName.MEDualTransposer, "oc:meDualTransposer")
     }
 
-    // ME Actuators. Only need AE2 to register and use their "me" side, same
-    // as ME (Dual) Transposer above; their GT5 status/control callbacks
-    // degrade gracefully to "GregTech not installed" if GregTech isn't
-    // present (see server/component/traits/GTMachineStatus.scala).
     if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
       GameRegistry.registerTileEntity(classOf[tileentity.MEActuator], Settings.namespace + "meActuator")
       GameRegistry.registerTileEntity(classOf[tileentity.MEDualActuator], Settings.namespace + "meDualActuator")

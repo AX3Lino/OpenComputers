@@ -11,13 +11,7 @@ import li.cil.oc.integration.opencomputers.Item
 import li.cil.oc.server.component
 import net.minecraft.item.ItemStack
 
-/**
- * Lets the ME Transposer, ME Dual Transposer, ME Actuator, and ME Dual
- * Actuator blocks also be selected as a microcontroller build component (in
- * place of a plain Transposer), giving that microcontroller the matching
- * Upgrade card. See common/tileentity/Microcontroller.scala for the AE2 grid
- * connection those cards draw a channel from.
- */
+// Lets the ME (Dual) Transposer/Actuator blocks be selected as a microcontroller build component too.
 object DriverMETransposer extends Item with HostAware {
   override def worksWith(stack: ItemStack) = isOneOf(stack,
     api.Items.get(Constants.BlockName.METransposer),
@@ -40,14 +34,7 @@ object DriverMETransposer extends Item with HostAware {
 
   override def slot(stack: ItemStack) = Slot.Upgrade
 
-  // Component tier for microcontroller/robot assembly (see
-  // common/template/MicrocontrollerTemplate.scala): plain Transposer is
-  // Tier.One (unchanged, driver default). ME (Dual) Transposer's own AE2
-  // network access bumps it to Tier.Two; ME (Dual) Actuator's added GT5
-  // machine control bumps it further to Tier.Three - matching how a Tier 1
-  // microcontroller case has exactly one upgrade slot (Tier.Two ceiling), so
-  // any two-card combo (e.g. Transposer + Geolyzer) already needs a Tier 2
-  // case regardless, same floor a single Actuator now requires alone.
+  // Balances against a 2-card Transposer+status-reader combo, which already needs a Tier 2 microcontroller case.
   override def tier(stack: ItemStack) =
     if (isDualActuator(stack) || isActuator(stack)) Tier.Three
     else Tier.Two

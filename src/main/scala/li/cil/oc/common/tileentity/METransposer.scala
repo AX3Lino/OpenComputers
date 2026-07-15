@@ -19,15 +19,7 @@ import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraftforge.common.util.ForgeDirection
 
-/**
- * A Transposer with an added AE2 grid connection for its virtual "me" side.
- * Extends tileentity.Transposer directly - `info: TransposerData` (the
- * fluid transfer rate, NBT-persisted exactly like vanilla's own fluid
- * regulator boost) and `node`/its NBT read-write plumbing all come from
- * there unchanged; only the `transposer` component field is overridden
- * (item transfer now also understands the "me" side) and the AE2 grid proxy
- * itself is new.
- */
+// Extends tileentity.Transposer directly; only `transposer` is overridden, the AE2 grid proxy is new.
 class METransposer extends Transposer with IGridProxyable with IActionHost with IPowerChannelState {
   protected def blockName = Constants.BlockName.METransposer
 

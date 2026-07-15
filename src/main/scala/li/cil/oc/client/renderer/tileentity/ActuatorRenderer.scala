@@ -10,12 +10,7 @@ import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer
 import net.minecraft.tileentity.TileEntity
 import org.lwjgl.opengl.GL11
 
-/**
- * Combines Adapter's continuous "always on" animated overlay (Textures.Actuator.iconOn,
- * see AdapterRenderer) with Transposer's activity blink (Textures.Transposer.iconOn,
- * time-decayed alpha, see TransposerRenderer) on the same block, since ME Actuator /
- * ME Dual Actuator are both a passively-connected device and an actively-operated one.
- */
+// Combines Adapter's always-on overlay with Transposer's activity blink on the same block.
 object ActuatorRenderer extends TileEntitySpecialRenderer {
   override def renderTileEntityAt(tileEntity: TileEntity, x: Double, y: Double, z: Double, f: Float) {
     RenderState.checkError(getClass.getName + ".renderTileEntityAt: entering (aka: wasntme)")
@@ -33,13 +28,10 @@ object ActuatorRenderer extends TileEntitySpecialRenderer {
 
     bindTexture(TextureMap.locationBlocksTexture)
 
-    // Passive: always on, plain alpha blend, same as AdapterRenderer (no
-    // setBlendAlpha call there either - it relies on the ambient opaque-white
-    // color state, same as this pass does).
+    // Passive: always on, plain alpha blend, same as AdapterRenderer.
     drawFaces(Textures.Actuator.iconOn)
 
-    // Active: time-decayed additive-blend alpha since the last transfer,
-    // same as TransposerRenderer.
+    // Active: time-decayed additive-blend alpha since the last transfer, same as TransposerRenderer.
     val transposer = tileEntity.asInstanceOf[tileentity.traits.TransposerActivity]
     val activity = math.max(0, 1 - (System.currentTimeMillis() - transposer.lastOperation) / 1000.0)
     if (activity > 0) {

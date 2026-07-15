@@ -10,28 +10,11 @@ import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.ExtendedWorld._
 import net.minecraftforge.common.util.ForgeDirection
 
-/**
- * Lets a component read and control the recipe progress of a single adjacent
- * GregTech machine, mirroring the read/write surface of Computronics' own
- * `gt_machine` Adapter component (integration/gregtech/gregtech5/DriverMachine.java
- * there) but implemented directly against GT5's IMachineProgress.
- *
- * GregTech is optional here (same pattern already used by
- * traits/power/AppliedEnergistics2.scala for AE2): the host block only needs
- * AE2 to register and to move items/fluids over its "me" side, so these
- * public callbacks never reference GT5 types directly in their own bytecode -
- * they check availability first, then delegate to the @Optional.Method-
- * annotated private layer below, which is the only place IMachineProgress is
- * ever named. Mixed into both ME Actuator and ME Dual Actuator.
- */
+// Lets a component read and control the recipe progress of a single adjacent GregTech
+// machine. GregTech is optional: public callbacks below never reference GT5 types in
+// their own bytecode, delegating instead to the @Optional.Method-annotated layer.
 trait GTMachineStatus extends WorldAware {
   private def gregTechAvailable = Mods.GregTech.isAvailable
-
-  // ----------------------------------------------------------------------- //
-  // Public callbacks: no GregTech types in their own signatures/bodies, safe
-  // to load regardless of whether GregTech is installed. All take an
-  // explicit side, same convention as transferItem/transferFluid, since
-  // different sides may face different machines.
 
   @Callback(doc = """function(side:number):boolean -- Returns whether the GT machine on the specified side currently has work queued.""")
   def hasWork(context: Context, args: Arguments): Array[AnyRef] = {
@@ -85,12 +68,6 @@ trait GTMachineStatus extends WorldAware {
     val allowed = args.checkBoolean(1)
     result(gtSetWorkAllowed(side, allowed))
   }
-
-  // ----------------------------------------------------------------------- //
-  // Private, @Optional.Method-annotated layer: the only place IMachineProgress
-  // is ever named. Only ever invoked after gregTechAvailable has already been
-  // checked above, so it's never reached when GregTech isn't installed -
-  // @Optional.Method is the belt to that suspenders.
 
   @Optional.Method(modid = Mods.IDs.GregTech)
   private def machineAt(side: ForgeDirection): Option[gregtech.api.interfaces.tileentity.IMachineProgress] = {

@@ -34,13 +34,7 @@ import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.convert.WrapAsJava._
 
-/**
- * A Transposer whose seventh, virtual side is an ME network, for items only.
- * Built directly on top of Transposer.Common (see server/component/
- * Transposer.scala) rather than duplicating its trait mix-in: physical-side
- * item/fluid transfer (sides 0-5) comes unchanged from there via super calls;
- * only "me" side handling lives here.
- */
+// A Transposer whose seventh, virtual side is an ME network, for items only.
 object METransposer {
 
   abstract class Common extends Transposer.Common {
@@ -67,13 +61,7 @@ object METransposer {
       else Option("not enough energy")
     }
 
-    /**
-     * Fluid transfer rate for an upgrade card: looked up from the NBT tag on
-     * the matching card ItemStack among the microcontroller's installed
-     * components, mirroring how vanilla Transposer.Upgrade reads a boosted
-     * rate off its own card - falls back to the flat setting if untagged,
-     * and to 0 for hosts that aren't a Microcontroller.
-     */
+    // Fluid transfer rate for an upgrade card: NBT tag on the matching card ItemStack, mirroring vanilla Transposer.Upgrade.
     protected def upgradeFluidTransferRate(host: EnvironmentHost, cardBlockName: String): Int = host match {
       case microcontroller: tileentity.Microcontroller =>
         microcontroller.info.components.find(_.isItemEqual(api.Items.get(cardBlockName).createItemStack(1)))
@@ -96,9 +84,7 @@ object METransposer {
     def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
 
     // ----------------------------------------------------------------------- //
-    // Filter parsing for ME requests: either a descriptor table (see
-    // AEStackFactory) or a database address plus entry index. The filter sits
-    // at argument index 2 (count omitted) or 3 (count given).
+    // Filter parsing for ME requests: a descriptor table or a database address+entry index, at argument index 2 or 3.
 
     protected def filterIndex(args: Arguments): Int =
       Seq(2, 3).find(i => i < args.count && (args.isTable(i) || args.isString(i))).getOrElse(-1)
@@ -171,9 +157,7 @@ object METransposer {
         val energy = p.getEnergy
         val source = new MachineSource(actionHost)
 
-        // Simulate insertion to figure out how much actually fits, then do a
-        // powered extraction from the network and commit the insert. Whatever
-        // could not be inserted after all is returned to the network.
+        // Simulate insertion first, then extract from the network and commit; any leftover goes back to the network.
         val simulated = request.getItemStack
         val fits =
           if (sinkSlot < 0) InventoryUtils.insertIntoInventory(simulated, inventory, Option(sinkSide.getOpposite), count, simulate = true)
@@ -247,12 +231,7 @@ object METransposer {
     }
   }
 
-  /**
-   * Hosted as a microcontroller build component (Slot.Upgrade). Only reaches
-   * an ME network if `host` itself exposes an AE2 grid connection (see
-   * Microcontroller.scala); on hosts that don't (e.g. Robot, Drone), "me"
-   * side transfers cleanly report "no ME network" rather than failing.
-   */
+  // Hosted as a microcontroller build component (Slot.Upgrade); hosts without an AE2 grid connection just report "no ME network".
   class Upgrade(val host: EnvironmentHost) extends Common {
     node.setVisibility(Visibility.Neighbors)
 

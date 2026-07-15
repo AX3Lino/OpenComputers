@@ -354,14 +354,9 @@ object Recipes {
         linkedCard.createItemStack(2),
         linkedCard.createItemStack(1), linkedCard.createItemStack(1)))
 
-      // ME Transposer/Actuator family alternative recipes: the "meTransposer"/
-      // "meDualTransposer"/"meActuator"/"meDualActuator" entries in default.recipes
-      // are each only a single recipe, so the alternates below are added directly
-      // instead, same as the Switch/AccessPoint -> Relay conversions above.
+      // ME Transposer/Actuator family alternative recipes (default.recipes only holds one recipe per item).
       if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
-        // ME Dual Transposer, alternative: AE2FluidCraft's own default recipe for its
-        // Fluid Interface (ingotIron/dyeBlue/blockGlass around an AE2 Interface) with a
-        // finished ME Transposer standing in for that AE2 Interface.
+        // AE2FluidCraft's own default Fluid Interface recipe, with a finished ME Transposer standing in for the AE2 Interface.
         GameRegistry.addRecipe(new ExtendedShapedOreRecipe(
           meDualTransposer.createItemStack(1),
           "aba",
@@ -372,13 +367,10 @@ object Recipes {
           Char.box('c'), "blockGlass",
           Char.box('d'), meTransposer.createItemStack(1)))
 
-        // ME Actuator, shortcut: a finished ME Transposer already has everything its main
-        // recipe needs except the Adapter side.
         GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
           meActuator.createItemStack(1),
           meTransposer.createItemStack(1), adapter.createItemStack(1)))
 
-        // ME Dual Actuator, shortcut: a finished ME Dual Transposer plus an Adapter.
         GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
           meDualActuator.createItemStack(1),
           meDualTransposer.createItemStack(1), adapter.createItemStack(1)))

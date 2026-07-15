@@ -11,14 +11,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.StatCollector
 import net.minecraft.world.World
 
-/**
- * Built directly on common.block.Transposer: CustomDrops (doCustomInit/
- * doCustomDrops/getPickBlock, all typed to tileentity.Transposer) is
- * inherited unchanged and works correctly here since tileentity.METransposer
- * is itself a tileentity.Transposer. Only what's genuinely different is
- * overridden - art, tile entity class, tooltip's lang key, and adding the
- * AE2 owner-set on placement.
- */
+// CustomDrops is inherited unchanged from Transposer since tileentity.METransposer is-a tileentity.Transposer.
 class METransposer extends Transposer {
   override protected def customTextures = Array(
     Some("METransposerTop"),
@@ -42,11 +35,7 @@ class METransposer extends Transposer {
     }
   }
 
-  // Deliberately doesn't call super.tooltipBody: Transposer's own version
-  // already adds a rate line (under a different lang key), which would
-  // duplicate this one. Goes straight to SimpleBlock's description-only
-  // behavior instead (getClass.getSimpleName resolves polymorphically, so
-  // this still looks up the right "METransposer" tooltip key).
+  // Skips super.tooltipBody - Transposer's own version adds a rate line under a different lang key, which would duplicate this one.
   override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit = {
     tooltip.addAll(li.cil.oc.util.Tooltip.get(getClass.getSimpleName))
 
