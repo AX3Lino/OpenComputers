@@ -14,7 +14,6 @@ import appeng.util.Platform
 import li.cil.oc.Constants
 import li.cil.oc.Settings
 import li.cil.oc.api
-import li.cil.oc.api.driver.DeviceInfo
 import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
 import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.api.machine.Arguments
@@ -22,7 +21,6 @@ import li.cil.oc.api.machine.Callback
 import li.cil.oc.api.machine.Context
 import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
-import li.cil.oc.api.prefab
 import li.cil.oc.common.item.data.TransposerData
 import li.cil.oc.common.tileentity
 import li.cil.oc.integration.appeng.AEStackFactory
@@ -36,21 +34,18 @@ import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.convert.WrapAsJava._
 
+/**
+ * A Transposer whose seventh, virtual side is an ME network, for items only.
+ * Built directly on top of Transposer.Common (see server/component/
+ * Transposer.scala) rather than duplicating its trait mix-in: physical-side
+ * item/fluid transfer (sides 0-5) comes unchanged from there via super calls;
+ * only "me" side handling lives here.
+ */
 object METransposer {
 
-  /**
-   * Shared behavior for both the standalone block and the microcontroller
-   * upgrade card. Concrete transposer callbacks (side numbers 0-5) come
-   * unchanged from the mixed-in traits; only "me" side handling lives here.
-   * `proxy` is the seam between the two hosts: the block always has one, the
-   * upgrade card only does when installed in a host that itself exposes an
-   * AE2 grid connection (currently just Microcontroller).
-   */
-  abstract class Common extends prefab.ManagedEnvironment with traits.WorldInventoryAnalytics with traits.WorldTankAnalytics with traits.WorldFluidContainerAnalytics with traits.InventoryTransfer with traits.FluidContainerTransfer with DeviceInfo {
-    protected def componentName = "me_transposer"
-
+  abstract class Common extends Transposer.Common {
     override val node = api.Network.newNode(this, Visibility.Network).
-      withComponent(componentName).
+      withComponent("me_transposer").
       withConnector().
       create()
 
@@ -58,16 +53,14 @@ object METransposer {
 
     protected def actionHost: IActionHost
 
-    private final lazy val deviceInfo = Map(
+    private final lazy val meDeviceInfo = Map(
       DeviceAttribute.Class -> DeviceClass.Generic,
       DeviceAttribute.Description -> "ME Transposer",
       DeviceAttribute.Vendor -> Constants.DeviceInfo.DefaultVendor,
       DeviceAttribute.Product -> "TP-ME1"
     )
 
-    override def getDeviceInfo: util.Map[String, String] = deviceInfo
-
-    override protected def checkSideForAction(args: Arguments, n: Int) = args.checkSideAny(n)
+    override def getDeviceInfo: util.Map[String, String] = meDeviceInfo
 
     override def onTransferContents(): Option[String] = {
       if (node.tryChangeBuffer(-Settings.get.meTransposerCost)) None
@@ -77,10 +70,9 @@ object METransposer {
     /**
      * Fluid transfer rate for an upgrade card: looked up from the NBT tag on
      * the matching card ItemStack among the microcontroller's installed
-     * components, mirroring how the vanilla Transposer.Upgrade reads a
-     * boosted rate off its own card (e.g. from GT fluid regulators baked
-     * into the crafting recipe elsewhere) — falls back to the flat setting
-     * if untagged, and to 0 for hosts that aren't a Microcontroller.
+     * components, mirroring how vanilla Transposer.Upgrade reads a boosted
+     * rate off its own card - falls back to the flat setting if untagged,
+     * and to 0 for hosts that aren't a Microcontroller.
      */
     protected def upgradeFluidTransferRate(host: EnvironmentHost, cardBlockName: String): Int = host match {
       case microcontroller: tileentity.Microcontroller =>
@@ -246,7 +238,7 @@ object METransposer {
 
     override protected def actionHost: IActionHost = host
 
-    override def fluidTransferRate(): Int = host.rate
+    override def fluidTransferRate(): Int = host.info.fluidTransferRate
 
     override def onTransferContents(): Option[String] = {
       val result = super.onTransferContents()

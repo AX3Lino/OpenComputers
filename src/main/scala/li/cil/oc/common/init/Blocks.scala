@@ -91,18 +91,27 @@ object Blocks {
     Recipes.addBlock(new CarpetedCapacitor(), Constants.BlockName.CarpetedCapacitor, "oc:carpetedCapacitor")
 
     // ME Transposers (require Applied Energistics 2 for their ME grid node).
-    // One block per fluid transfer rate tier, same tile entity class shared
-    // by all of them (registered once, matching how Screen1/2/3 share one
-    // "screen" tile entity registration).
+    // Fluid transfer rate is NBT (FLUID_TRANSFER_RATE, see common/item/data/
+    // TransposerData.scala), same as vanilla Transposer's own fluid
+    // regulator boost - not a separate block/item per tier. Any tiering on
+    // top of the flat rate lives entirely in NewHorizonsCoreMod, same as it
+    // already does for vanilla Transposer.
     if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
       GameRegistry.registerTileEntity(classOf[tileentity.METransposer], Settings.namespace + "meTransposer")
       GameRegistry.registerTileEntity(classOf[tileentity.MEDualTransposer], Settings.namespace + "meDualTransposer")
-      for ((suffix, rate) <- Constants.METransposerRateTiers) {
-        val meName = Constants.BlockName.METransposer + suffix
-        Recipes.addBlock(new METransposer(rate), meName, "oc:" + meName)
-        val dualName = Constants.BlockName.MEDualTransposer + suffix
-        Recipes.addBlock(new MEDualTransposer(rate), dualName, "oc:" + dualName)
-      }
+      Recipes.addBlock(new METransposer(), Constants.BlockName.METransposer, "oc:meTransposer")
+      Recipes.addBlock(new MEDualTransposer(), Constants.BlockName.MEDualTransposer, "oc:meDualTransposer")
+    }
+
+    // ME Actuators. Only need AE2 to register and use their "me" side, same
+    // as ME (Dual) Transposer above; their GT5 status/control callbacks
+    // degrade gracefully to "GregTech not installed" if GregTech isn't
+    // present (see server/component/traits/GTMachineStatus.scala).
+    if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
+      GameRegistry.registerTileEntity(classOf[tileentity.MEActuator], Settings.namespace + "meActuator")
+      GameRegistry.registerTileEntity(classOf[tileentity.MEDualActuator], Settings.namespace + "meDualActuator")
+      Recipes.addBlock(new MEActuator(), Constants.BlockName.MEActuator, "oc:meActuator")
+      Recipes.addBlock(new MEDualActuator(), Constants.BlockName.MEDualActuator, "oc:meDualActuator")
     }
   }
 }

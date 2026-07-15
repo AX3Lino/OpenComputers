@@ -9,7 +9,11 @@ import net.minecraft.nbt.NBTTagCompound
 class Transposer extends traits.Environment with traits.TransposerActivity {
   val info = new TransposerData()
 
-  val transposer = new component.Transposer.Block(this)
+  // Widened to the Common supertype (rather than the inferred concrete
+  // Block type) so ME Transposer and friends can override this field with
+  // their own component while still extending this tile entity directly -
+  // see common/tileentity/METransposer.scala.
+  val transposer: component.Transposer.Common = new component.Transposer.Block(this)
 
   def node = transposer.node
 

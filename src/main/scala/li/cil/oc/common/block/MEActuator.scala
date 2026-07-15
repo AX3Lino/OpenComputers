@@ -2,25 +2,35 @@ package li.cil.oc.common.block
 
 import java.text.NumberFormat
 
+import cpw.mods.fml.relauncher.Side
+import cpw.mods.fml.relauncher.SideOnly
 import li.cil.oc.Settings
+import li.cil.oc.client.Textures
 import li.cil.oc.common.item.data.TransposerData.FLUID_TRANSFER_RATE
 import li.cil.oc.common.tileentity
+import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemStack
 import net.minecraft.util.StatCollector
 import net.minecraft.world.World
 
-class MEDualTransposer extends METransposer {
+class MEActuator extends METransposer {
   override protected def customTextures = Array(
-    Some("MEDualTransposerTop"),
-    Some("MEDualTransposerTop"),
-    Some("MEDualTransposerSide"),
-    Some("MEDualTransposerSide"),
-    Some("MEDualTransposerSide"),
-    Some("MEDualTransposerSide")
+    Some("MEActuatorTop"),
+    Some("MEActuatorTop"),
+    Some("MEActuatorSide"),
+    Some("MEActuatorSide"),
+    Some("MEActuatorSide"),
+    Some("MEActuatorSide")
   )
 
-  override def createTileEntity(world: World, metadata: Int) = new tileentity.MEDualTransposer()
+  @SideOnly(Side.CLIENT)
+  override def registerBlockIcons(iconRegister: IIconRegister): Unit = {
+    super.registerBlockIcons(iconRegister)
+    Textures.Actuator.iconOn = iconRegister.registerIcon(Settings.resourceDomain + ":ActuatorOn")
+  }
+
+  override def createTileEntity(world: World, metadata: Int) = new tileentity.MEActuator()
 
   override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean) {
     tooltip.addAll(li.cil.oc.util.Tooltip.get(getClass.getSimpleName))
@@ -32,6 +42,6 @@ class MEDualTransposer extends METransposer {
       else
         Settings.get.transposerFluidTransferRate
 
-    tooltip.add(StatCollector.translateToLocalFormatted("tile.oc.meDualTransposer.tooltip", NumberFormat.getIntegerInstance.format(transferRate)))
+    tooltip.add(StatCollector.translateToLocalFormatted("tile.oc.meActuator.tooltip", NumberFormat.getIntegerInstance.format(transferRate)))
   }
 }

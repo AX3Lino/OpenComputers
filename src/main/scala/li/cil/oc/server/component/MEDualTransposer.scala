@@ -11,6 +11,7 @@ import appeng.me.GridAccessException
 import appeng.me.helpers.IGridProxyable
 import appeng.util.Platform
 import li.cil.oc.Constants
+import li.cil.oc.api
 import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
 import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.api.machine.Arguments
@@ -30,11 +31,14 @@ import net.minecraftforge.fluids.FluidStack
 
 import scala.collection.convert.WrapAsJava._
 
+/** An ME Transposer that can also move fluids in and out of the ME network. */
 object MEDualTransposer {
 
-  /** An ME Transposer that can also move fluids in and out of the ME network. */
   abstract class Common extends METransposer.Common {
-    override protected def componentName = "me_dual_transposer"
+    override val node = api.Network.newNode(this, Visibility.Network).
+      withComponent("me_dual_transposer").
+      withConnector().
+      create()
 
     private final lazy val deviceInfo = Map(
       DeviceAttribute.Class -> DeviceClass.Generic,
@@ -176,7 +180,7 @@ object MEDualTransposer {
 
     override protected def actionHost: IActionHost = host
 
-    override def fluidTransferRate(): Int = host.rate
+    override def fluidTransferRate(): Int = host.info.fluidTransferRate
 
     override def onTransferContents(): Option[String] = {
       val result = super.onTransferContents()
