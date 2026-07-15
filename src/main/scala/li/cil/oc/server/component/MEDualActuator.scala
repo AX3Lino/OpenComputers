@@ -16,10 +16,10 @@ import li.cil.oc.util.BlockPosition
 
 import scala.collection.convert.WrapAsJava._
 
-/** An ME Dual Transposer that can additionally read and control the progress of a single adjacent GregTech machine. */
+// An ME Dual Transposer with an Adapter fused in.
 object MEDualActuator {
 
-  abstract class Common extends MEDualTransposer.Common with traits.GTMachineStatus {
+  abstract class Common extends MEDualTransposer.Common {
     override val node = api.Network.newNode(this, Visibility.Network).
       withComponent("me_dual_actuator").
       withConnector().

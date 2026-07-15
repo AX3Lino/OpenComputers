@@ -16,10 +16,10 @@ import li.cil.oc.util.BlockPosition
 
 import scala.collection.convert.WrapAsJava._
 
-/** An ME Transposer that can additionally read and control the progress of a single adjacent GregTech machine. */
+// An ME Transposer with an Adapter fused in.
 object MEActuator {
 
-  abstract class Common extends METransposer.Common with traits.GTMachineStatus {
+  abstract class Common extends METransposer.Common {
     override val node = api.Network.newNode(this, Visibility.Network).
       withComponent("me_actuator").
       withConnector().
