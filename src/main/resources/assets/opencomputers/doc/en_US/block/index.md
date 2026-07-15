@@ -24,6 +24,10 @@ Keep in mind that some of these may not be available, depending on the recipe se
 ### Extensions
 * [Adapter](adapter.md)
 * [Geolyzer](geolyzer.md)
+* [ME Actuator](meActuator.md)
+* [ME Dual Actuator](meDualActuator.md)
+* [ME Dual Transposer](meDualTransposer.md)
+* [ME Transposer](meTransposer.md)
 * [Motion Sensor](motionSensor.md)
 * [Redstone I/O](redstone.md)
 * [Transposer](transposer.md)
