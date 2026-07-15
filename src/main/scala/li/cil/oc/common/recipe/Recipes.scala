@@ -195,6 +195,7 @@ object Recipes {
 
       // Recrafting operations.
       val accessPoint = api.Items.get(Constants.BlockName.AccessPoint)
+      val adapter = api.Items.get(Constants.BlockName.Adapter)
       val cable = api.Items.get(Constants.BlockName.Cable)
       val chamelium = api.Items.get(Constants.ItemName.Chamelium)
       val chameliumBlock = api.Items.get(Constants.BlockName.ChameliumBlock)
@@ -203,6 +204,10 @@ object Recipes {
       val floppy = api.Items.get(Constants.ItemName.Floppy)
       val hoverBoots = api.Items.get(Constants.ItemName.HoverBoots)
       val lootDisk = api.Items.get(Constants.ItemName.LootDisk)
+      val meActuator = api.Items.get(Constants.BlockName.MEActuator)
+      val meDualActuator = api.Items.get(Constants.BlockName.MEDualActuator)
+      val meDualTransposer = api.Items.get(Constants.BlockName.MEDualTransposer)
+      val meTransposer = api.Items.get(Constants.BlockName.METransposer)
       val mcu = api.Items.get(Constants.BlockName.Microcontroller)
       val navigationUpgrade = api.Items.get(Constants.ItemName.NavigationUpgrade)
       val print = api.Items.get(Constants.BlockName.Print)
@@ -348,6 +353,36 @@ object Recipes {
       GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
         linkedCard.createItemStack(2),
         linkedCard.createItemStack(1), linkedCard.createItemStack(1)))
+
+      // ME Transposer/Actuator family alternative recipes: the "meTransposer"/
+      // "meDualTransposer"/"meActuator"/"meDualActuator" entries in default.recipes
+      // are each only a single recipe, so the alternates below are added directly
+      // instead, same as the Switch/AccessPoint -> Relay conversions above.
+      if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
+        // ME Dual Transposer, alternative: AE2FluidCraft's own default recipe for its
+        // Fluid Interface (ingotIron/dyeBlue/blockGlass around an AE2 Interface) with a
+        // finished ME Transposer standing in for that AE2 Interface.
+        GameRegistry.addRecipe(new ExtendedShapedOreRecipe(
+          meDualTransposer.createItemStack(1),
+          "aba",
+          "cdc",
+          "aba",
+          Char.box('a'), "ingotIron",
+          Char.box('b'), "dyeBlue",
+          Char.box('c'), "blockGlass",
+          Char.box('d'), meTransposer.createItemStack(1)))
+
+        // ME Actuator, shortcut: a finished ME Transposer already has everything its main
+        // recipe needs except the Adapter side.
+        GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
+          meActuator.createItemStack(1),
+          meTransposer.createItemStack(1), adapter.createItemStack(1)))
+
+        // ME Dual Actuator, shortcut: a finished ME Dual Transposer plus an Adapter.
+        GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
+          meDualActuator.createItemStack(1),
+          meDualTransposer.createItemStack(1), adapter.createItemStack(1)))
+      }
 
     }
     catch {
