@@ -14,7 +14,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.StatCollector
 import net.minecraft.world.World
 
-class MEActuator extends METransposer {
+class MEActuator extends METransposer with traits.AdapterInterfacing {
   override protected def customTextures = Array(
     Some("MEActuatorTop"),
     Some("MEActuatorTop"),

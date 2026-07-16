@@ -34,7 +34,7 @@ object PacketSender {
     pb.sendToPlayersNearTileEntity(t)
   }
 
-  def sendAdapterState(t: tileentity.Adapter): Unit = {
+  def sendAdapterState(t: AdapterInterfacing): Unit = {
     val pb = new SimplePacketBuilder(PacketType.AdapterState)
 
     pb.writeTileEntity(t)

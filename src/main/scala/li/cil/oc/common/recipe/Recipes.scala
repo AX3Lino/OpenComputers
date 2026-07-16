@@ -354,28 +354,6 @@ object Recipes {
         linkedCard.createItemStack(2),
         linkedCard.createItemStack(1), linkedCard.createItemStack(1)))
 
-      // ME Transposer/Actuator family alternative recipes (default.recipes only holds one recipe per item).
-      if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
-        // AE2FluidCraft's own default Fluid Interface recipe, with a finished ME Transposer standing in for the AE2 Interface.
-        GameRegistry.addRecipe(new ExtendedShapedOreRecipe(
-          meDualTransposer.createItemStack(1),
-          "aba",
-          "cdc",
-          "aba",
-          Char.box('a'), "ingotIron",
-          Char.box('b'), "dyeBlue",
-          Char.box('c'), "blockGlass",
-          Char.box('d'), meTransposer.createItemStack(1)))
-
-        GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
-          meActuator.createItemStack(1),
-          meTransposer.createItemStack(1), adapter.createItemStack(1)))
-
-        GameRegistry.addRecipe(new ExtendedShapelessOreRecipe(
-          meDualActuator.createItemStack(1),
-          meDualTransposer.createItemStack(1), adapter.createItemStack(1)))
-      }
-
     }
     catch {
       case e: Throwable => OpenComputers.log.error("Error parsing recipes, you may not be able to craft any items from this mod!", e)

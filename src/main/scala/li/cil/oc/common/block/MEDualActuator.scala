@@ -14,7 +14,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.StatCollector
 import net.minecraft.world.World
 
-class MEDualActuator extends MEDualTransposer {
+class MEDualActuator extends MEDualTransposer with traits.AdapterInterfacing {
   override protected def customTextures = Array(
     Some("MEDualActuatorTop"),
     Some("MEDualActuatorTop"),

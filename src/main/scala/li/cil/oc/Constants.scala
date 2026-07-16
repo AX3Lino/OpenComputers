@@ -51,7 +51,6 @@ object Constants {
     def Case(tier: Int) = ItemUtils.caseNameWithTierSuffix("case", tier)
   }
 
-
   object ItemName {
     final val AbstractBusCard = "abstractBusCard"
     final val Acid = "acid"
