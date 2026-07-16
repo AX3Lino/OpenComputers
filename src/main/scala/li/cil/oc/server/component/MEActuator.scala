@@ -2,8 +2,6 @@ package li.cil.oc.server.component
 
 import java.util
 
-import appeng.api.networking.security.IActionHost
-import appeng.me.helpers.IGridProxyable
 import li.cil.oc.Constants
 import li.cil.oc.api
 import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
@@ -11,12 +9,10 @@ import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.common.tileentity
-import li.cil.oc.server.{PacketSender => ServerPacketSender}
-import li.cil.oc.util.BlockPosition
 
 import scala.collection.convert.WrapAsJava._
 
-// An ME Transposer with an Adapter fused in.
+// An ME Transposer with an Adapter fused in; block-interfacing behavior comes from externally-registered drivers.
 object MEActuator {
 
   abstract class Common extends METransposer.Common {
@@ -36,35 +32,10 @@ object MEActuator {
   }
 
   /** Hosted by the ME Actuator block's own tile entity. */
-  class Block(val host: tileentity.MEActuator) extends Common {
-    override def position = BlockPosition(host)
-
-    override protected def proxy = Some(host.getProxy)
-
-    override protected def actionHost: IActionHost = host
-
-    override def fluidTransferRate(): Int = host.info.fluidTransferRate
-
-    override def onTransferContents(): Option[String] = {
-      val result = super.onTransferContents()
-      if (result.isEmpty) ServerPacketSender.sendTransposerActivity(host)
-      result
-    }
-  }
+  class Block(val host: tileentity.MEActuator) extends Common with Transposer.BlockHost with METransposer.GridHost
 
   /** Hosted as a microcontroller build component (Slot.Upgrade). */
-  class Upgrade(val host: EnvironmentHost) extends Common {
-    node.setVisibility(Visibility.Neighbors)
-
-    override def position = BlockPosition(host)
-
-    override protected def proxy = host match {
-      case p: IGridProxyable => Some(p.getProxy)
-      case _ => None
-    }
-
-    override protected def actionHost: IActionHost = host.asInstanceOf[IActionHost]
-
+  class Upgrade(val host: EnvironmentHost) extends Common with METransposer.GridUpgradeHost {
     override def fluidTransferRate(): Int = upgradeFluidTransferRate(host, Constants.BlockName.MEActuator)
   }
 }

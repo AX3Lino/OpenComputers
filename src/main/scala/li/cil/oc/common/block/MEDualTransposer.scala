@@ -1,13 +1,8 @@
 package li.cil.oc.common.block
 
-import java.text.NumberFormat
-
-import li.cil.oc.Settings
-import li.cil.oc.common.item.data.TransposerData.FLUID_TRANSFER_RATE
 import li.cil.oc.common.tileentity
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemStack
-import net.minecraft.util.StatCollector
 import net.minecraft.world.World
 
 class MEDualTransposer extends METransposer {
@@ -22,16 +17,6 @@ class MEDualTransposer extends METransposer {
 
   override def createTileEntity(world: World, metadata: Int) = new tileentity.MEDualTransposer()
 
-  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean) {
-    tooltip.addAll(li.cil.oc.util.Tooltip.get(getClass.getSimpleName))
-
-    val tag = stack.getTagCompound
-    val transferRate =
-      if (tag != null && tag.hasKey(FLUID_TRANSFER_RATE))
-        tag.getInteger(FLUID_TRANSFER_RATE)
-      else
-        Settings.get.transposerFluidTransferRate
-
-    tooltip.add(StatCollector.translateToLocalFormatted("tile.oc.meDualTransposer.tooltip", NumberFormat.getIntegerInstance.format(transferRate)))
-  }
+  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit =
+    tooltipBodyWithOwnDescription(stack, tooltip, "tile.oc.meDualTransposer.tooltip")
 }

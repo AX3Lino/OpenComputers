@@ -1,14 +1,9 @@
 package li.cil.oc.common.block
 
-import java.text.NumberFormat
-
-import li.cil.oc.Settings
-import li.cil.oc.common.item.data.TransposerData.FLUID_TRANSFER_RATE
 import li.cil.oc.common.tileentity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemStack
-import net.minecraft.util.StatCollector
 import net.minecraft.world.World
 
 // CustomDrops is inherited unchanged from Transposer since tileentity.METransposer is-a tileentity.Transposer.
@@ -35,17 +30,13 @@ class METransposer extends Transposer {
     }
   }
 
-  // Skips super.tooltipBody - Transposer's own version adds a rate line under a different lang key, which would duplicate this one.
-  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit = {
+  // Shared by the whole ME family: skips super.tooltipBody, since Transposer's own version adds a rate line under a
+  // different lang key, which would duplicate this one - so the own-class description is re-added manually instead.
+  protected def tooltipBodyWithOwnDescription(stack: ItemStack, tooltip: java.util.List[String], langKey: String): Unit = {
     tooltip.addAll(li.cil.oc.util.Tooltip.get(getClass.getSimpleName))
-
-    val tag = stack.getTagCompound
-    val transferRate =
-      if (tag != null && tag.hasKey(FLUID_TRANSFER_RATE))
-        tag.getInteger(FLUID_TRANSFER_RATE)
-      else
-        Settings.get.transposerFluidTransferRate
-
-    tooltip.add(StatCollector.translateToLocalFormatted("tile.oc.meTransposer.tooltip", NumberFormat.getIntegerInstance.format(transferRate)))
+    addTransferRateTooltip(tooltip, stack, langKey)
   }
+
+  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit =
+    tooltipBodyWithOwnDescription(stack, tooltip, "tile.oc.meTransposer.tooltip")
 }

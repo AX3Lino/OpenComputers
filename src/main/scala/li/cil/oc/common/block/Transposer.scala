@@ -62,15 +62,18 @@ class Transposer(protected implicit val tileTag: ClassTag[tileentity.Transposer]
     dropBlockAsItem(tileEntity.world, tileEntity.x, tileEntity.y, tileEntity.z, tileEntity.info.createItemStack())
   }
 
-  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: util.List[String], advanced: Boolean): Unit = {
+  // Shared by every flavor's tooltipBody (METransposer and friends read the tag the same way, under their own lang key).
+  protected def fluidTransferRateOf(stack: ItemStack): Int = {
     val tag = stack.getTagCompound
-    val transferRate =
-      if (tag != null && tag.hasKey(FLUID_TRANSFER_RATE))
-        tag.getInteger(FLUID_TRANSFER_RATE)
-      else
-        Settings.get.transposerFluidTransferRate
+    if (tag != null && tag.hasKey(FLUID_TRANSFER_RATE)) tag.getInteger(FLUID_TRANSFER_RATE)
+    else Settings.get.transposerFluidTransferRate
+  }
 
-    tooltip.add(StatCollector.translateToLocalFormatted("tile.oc.transposer.tooltip", NumberFormat.getIntegerInstance.format(transferRate)))
+  protected def addTransferRateTooltip(tooltip: util.List[String], stack: ItemStack, langKey: String): Unit =
+    tooltip.add(StatCollector.translateToLocalFormatted(langKey, NumberFormat.getIntegerInstance.format(fluidTransferRateOf(stack))))
+
+  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: util.List[String], advanced: Boolean): Unit = {
+    addTransferRateTooltip(tooltip, stack, "tile.oc.transposer.tooltip")
     super.tooltipBody(metadata, stack, player, tooltip, advanced)
   }
 }

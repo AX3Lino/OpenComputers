@@ -24,7 +24,6 @@ import li.cil.oc.api.network.Visibility
 import li.cil.oc.common.item.data.TransposerData
 import li.cil.oc.common.tileentity
 import li.cil.oc.integration.appeng.AEStackFactory
-import li.cil.oc.server.{PacketSender => ServerPacketSender}
 import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.DatabaseAccess
 import li.cil.oc.util.ExtendedArguments._
@@ -76,9 +75,13 @@ object METransposer {
     // ----------------------------------------------------------------------- //
     // The virtual ME side.
 
-    protected def isMe(args: Arguments, index: Int) =
+    override protected def isVirtualSide(args: Arguments, index: Int): Boolean =
       (args.isString(index) && args.checkString(index).equalsIgnoreCase("me")) ||
         (args.isInteger(index) && args.checkInteger(index) == ForgeDirection.UNKNOWN.ordinal)
+
+    override protected def virtualSideBothError = "source and sink cannot both be the ME network"
+
+    override protected def virtualSideSwapError = "cannot swap with the ME network"
 
     @Callback(doc = """function():boolean -- Get whether the device is actively connected to an ME network (powered and got a channel).""")
     def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
@@ -111,31 +114,18 @@ object METransposer {
     // ----------------------------------------------------------------------- //
     // Item transfers.
 
+    // Overridden only to attach ME-specific doc text; the virtual-side dispatch itself lives in InventoryTransfer.
     @Callback(doc = """function(sourceSide, sinkSide[, count:number[, sourceSlot:number[, sinkSlot:number]]]):number -- Transfer some items between two inventories. Either side may also be the string "me" (or 6) for the ME network; pulling from ME requires a filter (table or dbAddress:string, dbEntry:number) in place of sourceSlot.""")
-    override def transferItem(context: Context, args: Arguments): Array[AnyRef] = {
-      val sourceIsMe = isMe(args, 0)
-      val sinkIsMe = isMe(args, 1)
-      if (sourceIsMe && sinkIsMe) result(Unit, "source and sink cannot both be the ME network")
-      else if (!sourceIsMe && !sinkIsMe) super.transferItem(context, args)
-      else onTransferContents() match {
-        case Some(reason) => result(Unit, reason)
-        case _ =>
-          if (sourceIsMe) transferItemFromMe(args)
-          else transferItemToMe(args)
-      }
-    }
+    override def transferItem(context: Context, args: Arguments): Array[AnyRef] = super.transferItem(context, args)
 
     @Callback(doc = """function(sourceSide:number, sinkSide:number, sourceSlot:number, sinkSlot:number[, safe:boolean]):boolean -- Swap two inventory slots if and only if both directions succeed. Safe swaps require two non-empty slots. The ME network cannot take part in swaps.""")
-    override def swap(context: Context, args: Arguments): Array[AnyRef] = {
-      if (isMe(args, 0) || isMe(args, 1)) result(Unit, "cannot swap with the ME network")
-      else super.swap(context, args)
-    }
+    override def swap(context: Context, args: Arguments): Array[AnyRef] = super.swap(context, args)
 
-    @Callback(doc = """function(sourceSide:number, sinkSide:number[, count:number [, sourceTank:number]]):boolean, number -- Transfer some fluid between two tanks. Returns operation result and filled amount""")
-    override def transferFluid(context: Context, args: Arguments): Array[AnyRef] = {
-      if (isMe(args, 0) || isMe(args, 1)) result(Unit, "this device cannot transfer fluids to or from the ME network")
-      else super.transferFluid(context, args)
-    }
+    override protected def transferItemVirtual(context: Context, args: Arguments, sourceIsMe: Boolean): Array[AnyRef] =
+      if (sourceIsMe) transferItemFromMe(args) else transferItemToMe(args)
+
+    override protected def transferFluidVirtual(context: Context, args: Arguments, sourceIsMe: Boolean): Array[AnyRef] =
+      result(Unit, "this device cannot transfer fluids to or from the ME network")
 
     private def transferItemFromMe(args: Arguments): Array[AnyRef] = {
       val sinkSide = checkSideForAction(args, 1)
@@ -214,25 +204,19 @@ object METransposer {
     }
   }
 
-  /** Hosted by the ME Transposer block's own tile entity. */
-  class Block(val host: tileentity.METransposer) extends Common {
-    override def position = BlockPosition(host)
+  // Shared by every block-hosted flavor with an AE2 grid proxy on the tile entity itself (METransposer and friends).
+  trait GridHost extends Common {
+    def host: IGridProxyable with IActionHost
 
     override protected def proxy = Some(host.getProxy)
 
     override protected def actionHost: IActionHost = host
-
-    override def fluidTransferRate(): Int = host.info.fluidTransferRate
-
-    override def onTransferContents(): Option[String] = {
-      val result = super.onTransferContents()
-      if (result.isEmpty) ServerPacketSender.sendTransposerActivity(host)
-      result
-    }
   }
 
-  // Hosted as a microcontroller build component (Slot.Upgrade); hosts without an AE2 grid connection just report "no ME network".
-  class Upgrade(val host: EnvironmentHost) extends Common {
+  // Shared by every microcontroller-upgrade flavor; hosts without an AE2 grid connection just report "no ME network".
+  trait GridUpgradeHost extends Common {
+    def host: EnvironmentHost
+
     node.setVisibility(Visibility.Neighbors)
 
     override def position = BlockPosition(host)
@@ -243,7 +227,12 @@ object METransposer {
     }
 
     override protected def actionHost: IActionHost = host.asInstanceOf[IActionHost]
+  }
 
+  /** Hosted by the ME Transposer block's own tile entity. */
+  class Block(val host: tileentity.METransposer) extends Common with Transposer.BlockHost with GridHost
+
+  class Upgrade(val host: EnvironmentHost) extends Common with GridUpgradeHost {
     override def fluidTransferRate(): Int = upgradeFluidTransferRate(host, Constants.BlockName.METransposer)
   }
 }

@@ -4,11 +4,9 @@ import java.util
 
 import appeng.api.AEApi
 import appeng.api.config.Actionable
-import appeng.api.networking.security.IActionHost
 import appeng.api.networking.security.MachineSource
 import appeng.api.storage.data.IAEFluidStack
 import appeng.me.GridAccessException
-import appeng.me.helpers.IGridProxyable
 import appeng.util.Platform
 import li.cil.oc.Constants
 import li.cil.oc.api
@@ -21,8 +19,6 @@ import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.common.tileentity
 import li.cil.oc.integration.appeng.AEStackFactory
-import li.cil.oc.server.{PacketSender => ServerPacketSender}
-import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.DatabaseAccess
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.FluidUtils
@@ -74,19 +70,12 @@ object MEDualTransposer {
     // ----------------------------------------------------------------------- //
     // Fluid transfers.
 
+    // Overridden only to attach ME-specific doc text; the virtual-side dispatch itself lives in InventoryTransfer.
     @Callback(doc = """function(sourceSide, sinkSide[, count:number[, sourceTank:number]]):boolean, number -- Transfer some fluid between two tanks. Either side may also be the string "me" (or 6) for the ME network; pulling from ME requires a filter (table or dbAddress:string, dbEntry:number). Returns operation result and filled amount""")
-    override def transferFluid(context: Context, args: Arguments): Array[AnyRef] = {
-      val sourceIsMe = isMe(args, 0)
-      val sinkIsMe = isMe(args, 1)
-      if (sourceIsMe && sinkIsMe) result(Unit, "source and sink cannot both be the ME network")
-      else if (!sourceIsMe && !sinkIsMe) super.transferFluid(context, args)
-      else onTransferContents() match {
-        case Some(reason) => result(Unit, reason)
-        case _ =>
-          if (sourceIsMe) transferFluidFromMe(context, args)
-          else transferFluidToMe(context, args)
-      }
-    }
+    override def transferFluid(context: Context, args: Arguments): Array[AnyRef] = super.transferFluid(context, args)
+
+    override protected def transferFluidVirtual(context: Context, args: Arguments, sourceIsMe: Boolean): Array[AnyRef] =
+      if (sourceIsMe) transferFluidFromMe(context, args) else transferFluidToMe(context, args)
 
     private def transferFluidFromMe(context: Context, args: Arguments): Array[AnyRef] = {
       val sinkSide = checkSideForAction(args, 1)
@@ -173,35 +162,10 @@ object MEDualTransposer {
   }
 
   /** Hosted by the ME Dual Transposer block's own tile entity. */
-  class Block(val host: tileentity.MEDualTransposer) extends Common {
-    override def position = BlockPosition(host)
-
-    override protected def proxy = Some(host.getProxy)
-
-    override protected def actionHost: IActionHost = host
-
-    override def fluidTransferRate(): Int = host.info.fluidTransferRate
-
-    override def onTransferContents(): Option[String] = {
-      val result = super.onTransferContents()
-      if (result.isEmpty) ServerPacketSender.sendTransposerActivity(host)
-      result
-    }
-  }
+  class Block(val host: tileentity.MEDualTransposer) extends Common with Transposer.BlockHost with METransposer.GridHost
 
   /** Hosted as a microcontroller build component (Slot.Upgrade). */
-  class Upgrade(val host: EnvironmentHost) extends Common {
-    node.setVisibility(Visibility.Neighbors)
-
-    override def position = BlockPosition(host)
-
-    override protected def proxy = host match {
-      case p: IGridProxyable => Some(p.getProxy)
-      case _ => None
-    }
-
-    override protected def actionHost: IActionHost = host.asInstanceOf[IActionHost]
-
+  class Upgrade(val host: EnvironmentHost) extends Common with METransposer.GridUpgradeHost {
     override def fluidTransferRate(): Int = upgradeFluidTransferRate(host, Constants.BlockName.MEDualTransposer)
   }
 }

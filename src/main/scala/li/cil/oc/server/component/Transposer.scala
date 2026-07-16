@@ -46,17 +46,22 @@ object Transposer {
     }
   }
 
-  class Block(val host: tileentity.Transposer) extends Common {
+  // Shared by every block-hosted flavor (Transposer, METransposer, MEDualTransposer, MEActuator, MEDualActuator).
+  trait BlockHost extends Common {
+    def host: tileentity.Transposer
+
     override def position = BlockPosition(host)
+
+    override def fluidTransferRate(): Int = host.info.fluidTransferRate
 
     override def onTransferContents(): Option[String] = {
       val result = super.onTransferContents()
       if (result.isEmpty) ServerPacketSender.sendTransposerActivity(host)
       result
     }
-
-    override def fluidTransferRate(): Int = host.info.fluidTransferRate
   }
+
+  class Block(val host: tileentity.Transposer) extends Common with BlockHost
 
   class Upgrade(val host: EnvironmentHost) extends Common {
     node.setVisibility(Visibility.Neighbors)
