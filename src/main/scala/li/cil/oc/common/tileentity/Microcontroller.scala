@@ -26,6 +26,7 @@ import li.cil.oc.common.Tier
 import li.cil.oc.common.asm.Injectable
 import li.cil.oc.common.item.data.MicrocontrollerData
 import li.cil.oc.integration.Mods
+import li.cil.oc.integration.appeng.DriverMETransposer
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.ExtendedNBT._
 import net.minecraft.entity.player.EntityPlayer
@@ -284,18 +285,21 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   override def canInsertItem(slot: Int, stack: ItemStack, side: Int) = false
 
   // ----------------------------------------------------------------------- //
-  // Optional ME network connection: exposed only when an ME Transposer or ME
-  // Dual Transposer is one of this microcontroller's installed components,
-  // as a second, channel-consuming grid connection independent of the
-  // channel-free one PowerAcceptor's AE2 power trait already exposes on
-  // every powered OC tile. Every AE2-typed field/method below follows the
+  // Optional ME network connection: exposed only when one of the ME
+  // Transposer/Actuator family is one of this microcontroller's installed
+  // components, as a second, channel-consuming grid connection independent
+  // of the channel-free one PowerAcceptor's AE2 power trait already exposes
+  // on every powered OC tile. Every AE2-typed field/method below follows the
   // same @Injectable/@Optional pattern as traits/power/AppliedEnergistics2,
   // so non-AE2 installs never load an AE2 class here.
 
-  private def hasMETransposerCard =
-    Mods.AppliedEnergistics2.isAvailable && info.components.exists(stack => stack != null && (
-      stack.isItemEqual(api.Items.get(Constants.BlockName.METransposer).createItemStack(1)) ||
-        stack.isItemEqual(api.Items.get(Constants.BlockName.MEDualTransposer).createItemStack(1))))
+  // Delegates to DriverMETransposer.worksWith - the actual authority on which items are ME cards -
+  // instead of re-deriving its own list, so this can't drift out of sync with the driver again.
+  @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
+  private def isMECard(stack: ItemStack): Boolean = DriverMETransposer.worksWith(stack)
+
+  private def hasMECard =
+    Mods.AppliedEnergistics2.isAvailable && info.components.exists(stack => stack != null && isMECard(stack))
 
   // 'Manual' Option[AnyRef], because a properly typed field would reference
   // an AE2 class even on installs where the interfaces above are not
@@ -314,7 +318,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   }
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
-  def getProxy: AENetworkProxy = if (hasMETransposerCard) meNetworkProxy() else null
+  def getProxy: AENetworkProxy = if (hasMECard) meNetworkProxy() else null
 
   // getGridNode/getCableConnectionType/securityBreak already exist courtesy
   // of PowerAcceptor's AE2 power trait (a channel-free node used purely for
@@ -326,13 +330,13 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   // power-only node.
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
-  override def getGridNode(dir: ForgeDirection): IGridNode = if (hasMETransposerCard) meNetworkProxy().getNode else super.getGridNode(dir)
+  override def getGridNode(dir: ForgeDirection): IGridNode = if (hasMECard) meNetworkProxy().getNode else super.getGridNode(dir)
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
-  def getActionableNode: IGridNode = if (hasMETransposerCard) meNetworkProxy().getNode else null
+  def getActionableNode: IGridNode = if (hasMECard) meNetworkProxy().getNode else null
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
-  override def getCableConnectionType(dir: ForgeDirection): AECableType = if (hasMETransposerCard) AECableType.SMART else super.getCableConnectionType(dir)
+  override def getCableConnectionType(dir: ForgeDirection): AECableType = if (hasMECard) AECableType.SMART else super.getCableConnectionType(dir)
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   def getLocation = new DimensionalCoord(this)
@@ -342,7 +346,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   override def securityBreak() {
-    if (hasMETransposerCard) meProxy match {
+    if (hasMECard) meProxy match {
       case Some(proxy: AENetworkProxy) => proxy.invalidate()
       case _ =>
     }
@@ -351,17 +355,17 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   private def readMEProxyFromNBT(nbt: NBTTagCompound) {
-    if (hasMETransposerCard) meNetworkProxy().readFromNBT(nbt)
+    if (hasMECard) meNetworkProxy().readFromNBT(nbt)
   }
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   private def writeMEProxyToNBT(nbt: NBTTagCompound) {
-    if (hasMETransposerCard) meNetworkProxy().writeToNBT(nbt)
+    if (hasMECard) meNetworkProxy().writeToNBT(nbt)
   }
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   private def scheduleMEProxyReady() {
-    if (hasMETransposerCard) EventHandler.scheduleServer(() => if (!isInvalid && hasMETransposerCard) {
+    if (hasMECard) EventHandler.scheduleServer(() => if (!isInvalid && hasMECard) {
       val proxy = meNetworkProxy()
       if (!proxy.isReady) proxy.onReady()
     })

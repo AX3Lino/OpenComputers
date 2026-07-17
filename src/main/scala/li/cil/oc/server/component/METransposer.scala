@@ -221,8 +221,10 @@ object METransposer {
 
     override def position = BlockPosition(host)
 
+    // Option(...), not Some(...): getProxy legitimately returns a Java null when no ME card is
+    // installed, and Some(null) would be mistaken for a present-but-unusable proxy downstream.
     override protected def proxy = host match {
-      case p: IGridProxyable => Some(p.getProxy)
+      case p: IGridProxyable => Option(p.getProxy)
       case _ => None
     }
 
