@@ -712,27 +712,27 @@ transposer {
   output: 4
 }
 meTransposer {
-  input: [["oc:cable", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, "oc:cable"]
-          [{item="appliedenergistics2:item.ItemMultiPart", subID=36}, "oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
-          ["oc:lanCard", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:tile.BlockInterface"}]]
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
+          [{item="appliedenergistics2:tile.BlockInterface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
 }
 
 meDualTransposer {
-  input: [["oc:cable", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, "oc:cable"]
-          [{item="appliedenergistics2:item.ItemMultiPart", subID=36}, "oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
-          ["oc:lanCard", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="ae2fc:fluid_interface"}]]
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
+          [{item="ae2fc:fluid_interface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
 }
 
 meActuator {
-  input: [["oc:cable", {item="appliedenergistics2:item.ItemMultiPart", subID=536}, "oc:cable"]
-          ["oc:lanCard", "oc:transposer", {item="appliedenergistics2:tile.BlockInterface"}]
-          ["", "oc:adapter", ""]]
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="appliedenergistics2:tile.BlockInterface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
+          ["oc:adapter", "", ""]]
 }
 
 meDualActuator {
-  input: [["oc:cable", {item="appliedenergistics2:item.ItemMultiPart", subID=536}, "oc:cable"]
-          ["oc:lanCard", "oc:transposer", {item="ae2fc:fluid_interface"}]
-          ["", "oc:adapter", ""]]
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="ae2fc:fluid_interface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
+          ["oc:adapter", "", ""]]
 }
 
 waypoint {
