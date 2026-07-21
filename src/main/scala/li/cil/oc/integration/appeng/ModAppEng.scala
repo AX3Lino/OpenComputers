@@ -26,6 +26,7 @@ object ModAppEng extends ModProxy {
     Driver.add(DriverPartInterface)
     Driver.add(DriverBlockInterface)
     Driver.add(DriverUpgradeAE)
+    Driver.add(DriverMETransposer)
 
     Driver.add(new ConverterCellInventory)
     Driver.add(new ConverterPattern)
@@ -36,6 +37,7 @@ object ModAppEng extends ModProxy {
     Driver.add(DriverPartInterface.Provider)
     Driver.add(DriverBlockInterface.Provider)
     Driver.add(DriverUpgradeAE.Provider)
+    Driver.add(DriverMETransposer.Provider)
 
     WirelessHandlerUpgradeAE.register()
     val multi = new li.cil.oc.common.item.Delegator()

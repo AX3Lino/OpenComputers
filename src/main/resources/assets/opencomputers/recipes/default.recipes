@@ -707,6 +707,26 @@ transposer {
           [ingotIron, "oc:tankControllerUpgrade", ingotIron]]
   output: 4
 }
+meTransposer {
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
+          [{item="appliedenergistics2:tile.BlockInterface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
+}
+meDualTransposer {
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
+          [{item="ae2fc:fluid_interface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
+}
+meActuator {
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="appliedenergistics2:tile.BlockInterface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
+          ["oc:adapter", "", ""]]
+}
+meDualActuator {
+  input: [["oc:lanCard", "oc:cable", "oc:cable"]
+          ["oc:transposer", {item="ae2fc:fluid_interface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
+          ["oc:adapter", "", ""]]
+}
 waypoint {
   input: [[ingotIron, "oc:circuitChip1", ingotIron]
           ["oc:materialTransistor", "oc:materialInterweb", "oc:materialTransistor"],

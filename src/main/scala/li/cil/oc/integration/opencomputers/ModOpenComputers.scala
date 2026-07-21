@@ -302,7 +302,11 @@ object ModOpenComputers extends ModProxy {
       Constants.BlockName.CarpetedCapacitor,
       Constants.ItemName.Analyzer,
       Constants.ItemName.LeashUpgrade,
-      Constants.ItemName.RITEGUpgrade
+      Constants.ItemName.RITEGUpgrade,
+      Constants.BlockName.METransposer,
+      Constants.BlockName.MEDualTransposer,
+      Constants.BlockName.MEActuator,
+      Constants.BlockName.MEDualActuator
     )
     blacklistHost(classOf[internal.Tablet],
       Constants.BlockName.ScreenTier1,
@@ -330,7 +334,11 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.ConfiguratorUpgrade,
       Constants.ItemName.UpgradeAE1,
       Constants.ItemName.UpgradeAE2,
-      Constants.ItemName.UpgradeAE3
+      Constants.ItemName.UpgradeAE3,
+      Constants.BlockName.METransposer,
+      Constants.BlockName.MEDualTransposer,
+      Constants.BlockName.MEActuator,
+      Constants.BlockName.MEDualActuator
     )
 
     if (!WirelessRedstone.isAvailable) {
@@ -403,8 +411,10 @@ object ModOpenComputers extends ModProxy {
   }
 
   private def blacklistHost(host: Class[_], itemNames: String*) {
-    for (itemName <- itemNames) {
-      api.IMC.blacklistHost(itemName, host, api.Items.get(itemName).createItemStack(1))
+    for (itemName <- itemNames) api.Items.get(itemName) match {
+      case null => null
+      case itemInfo: ItemInfo => api.IMC.blacklistHost(itemName, host, itemInfo.createItemStack(1))
+      case _ => null
     }
   }
 

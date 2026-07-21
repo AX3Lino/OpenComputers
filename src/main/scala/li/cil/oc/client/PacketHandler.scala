@@ -108,7 +108,7 @@ object PacketHandler extends CommonPacketHandler {
     }
 
   def onAdapterState(p: PacketParser) =
-    p.readTileEntity[Adapter]() match {
+    p.readTileEntity[AdapterInterfacing]() match {
       case Some(t) =>
         t.openSides = t.uncompressSides(p.readByte())
         t.world.markBlockForUpdate(t.x, t.y, t.z)

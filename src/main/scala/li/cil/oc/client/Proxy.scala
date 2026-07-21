@@ -18,6 +18,7 @@ import li.cil.oc.client.renderer.TextBufferRenderCache
 import li.cil.oc.client.renderer.WirelessNetworkDebugRenderer
 import li.cil.oc.client.renderer.block.BlockRenderer
 import li.cil.oc.client.renderer.entity.DroneRenderer
+import li.cil.oc.integration.Mods
 import li.cil.oc.client.renderer.item.ItemRenderer
 import li.cil.oc.client.renderer.tileentity._
 import li.cil.oc.common.component.TextBuffer
@@ -63,6 +64,10 @@ private[oc] class Proxy extends CommonProxy {
       ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Hologram], HologramRenderer)
     else
       ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Hologram], HologramRendererFallback)
+    if (Mods.AppliedEnergistics2.isAvailable) {
+      ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.MEActuator], ActuatorRenderer)
+      ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.MEDualActuator], ActuatorRenderer)
+    }
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Microcontroller], MicrocontrollerRenderer)
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.NetSplitter], NetSplitterRenderer)
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.PowerDistributor], PowerDistributorRenderer)

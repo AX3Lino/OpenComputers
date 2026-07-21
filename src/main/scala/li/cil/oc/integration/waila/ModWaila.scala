@@ -9,5 +9,8 @@ object ModWaila extends ModProxy {
 
   override def initialize() {
     FMLInterModComms.sendMessage(Mods.IDs.Waila, "register", "li.cil.oc.integration.waila.BlockDataProvider.init")
+    if (Mods.AppliedEnergistics2.isAvailable) {
+      FMLInterModComms.sendMessage(Mods.IDs.Waila, "register", "li.cil.oc.integration.appeng.WailaMETransposer.init")
+    }
   }
 }

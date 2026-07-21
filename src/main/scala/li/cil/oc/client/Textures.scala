@@ -79,6 +79,10 @@ object Textures {
     var iconOn: IIcon = _
   }
 
+  object Actuator {
+    var iconOn: IIcon = _
+  }
+
   object Cable {
     var iconCap: IIcon = _
   }

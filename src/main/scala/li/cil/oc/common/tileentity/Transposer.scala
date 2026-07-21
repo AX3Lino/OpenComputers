@@ -4,7 +4,8 @@ import li.cil.oc.server.component
 import net.minecraft.nbt.NBTTagCompound
 
 class Transposer extends traits.Environment {
-  val transposer = new component.Transposer.Block(this)
+  // Widened to Common (not the inferred Block type) so METransposer and friends can override this field.
+  val transposer: component.Transposer.Common = new component.Transposer.Block(this)
 
   def node = transposer.node
 

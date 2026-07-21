@@ -46,7 +46,10 @@ object Transposer {
     }
   }
 
-  class Block(val host: tileentity.Transposer) extends Common {
+  // Shared by every block-hosted flavor (Transposer, METransposer, MEDualTransposer, MEActuator, MEDualActuator).
+  trait BlockHost extends Common {
+    def host: tileentity.Transposer
+
     override def position = BlockPosition(host)
 
     override def onTransferContents(): Option[String] = {
@@ -55,6 +58,8 @@ object Transposer {
       result
     }
   }
+
+  class Block(val host: tileentity.Transposer) extends Common with BlockHost
 
   class Upgrade(val host: EnvironmentHost) extends Common {
     node.setVisibility(Visibility.Neighbors)
