@@ -44,5 +44,5 @@ object MEDualActuator {
   class Block(val host: tileentity.MEDualActuator) extends Common with Transposer.BlockHost with METransposer.GridHost
 
   /** Hosted as a microcontroller build component (Slot.Upgrade). */
-  class Upgrade(val host: EnvironmentHost) extends Common with METransposer.GridUpgradeHost
+  class Upgrade(val host: EnvironmentHost) extends Common with METransposer.GridUpgradeHost with traits.AdapterInterfacing
 }
