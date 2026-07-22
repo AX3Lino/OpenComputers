@@ -329,8 +329,12 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   // Without a card, behavior is unchanged: falls through to the inherited
   // power-only node.
 
+  // meNetworkProxy().getNode returns null until AE2 calls onReady() on it (deferred to a
+  // later server tick by scheduleMEProxyReady); fall back to the power-only node during that
+  // window so the stock power trait's unconditional getGridNode(side).getGrid call never NPEs.
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
-  override def getGridNode(dir: ForgeDirection): IGridNode = if (hasMECard) meNetworkProxy().getNode else super.getGridNode(dir)
+  override def getGridNode(dir: ForgeDirection): IGridNode =
+    if (hasMECard && meNetworkProxy().isReady) meNetworkProxy().getNode else super.getGridNode(dir)
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   def getActionableNode: IGridNode = if (hasMECard) meNetworkProxy().getNode else null
