@@ -46,7 +46,7 @@ object Transposer {
     }
   }
 
-  // Shared by every block-hosted flavor (Transposer, METransposer, MEDualTransposer, MEActuator, MEDualActuator).
+  // Shared by every block-hosted flavor (Transposer, METransposer, MEActuator).
   trait BlockHost extends Common {
     def host: tileentity.Transposer
 

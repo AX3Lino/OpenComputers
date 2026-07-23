@@ -8,4 +8,4 @@ The transposer bridges the gap between redstone controlled hoppers and [robots](
 
 Besides moving things around, it can also be used to inspect the contents of the adjacent inventories, like an [adapter](adapter.md) with an [inventory controller upgrade](../item/inventoryControllerUpgrade.md) could, and the contents of adjacent tanks, like an adapter with a [tank controller upgrade](../item/tankControllerUpgrade.md) could.
 
-If Applied Energistics 2 is installed, see also the [ME Transposer](meTransposer.md), [ME Dual Transposer](meDualTransposer.md), [ME Actuator](meActuator.md) and [ME Dual Actuator](meDualActuator.md) for variants that also connect to an ME network.
+If Applied Energistics 2 is installed, see also the [ME Transposer](meTransposer.md) and [ME Actuator](meActuator.md) for variants that also connect to an ME network.

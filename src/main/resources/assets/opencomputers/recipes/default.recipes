@@ -256,6 +256,13 @@ configuratorUpgrade {
           [ingotIron, "oc:materialCircuitBoardPrinted", ingotIron]]
 }
 
+# NOTE: first-pass placeholder, not balanced. Had no recipe anywhere in the pack before
+# (creative/NEI-only); added so the ME Transposer/Actuator recipes below have a real ingredient.
+me_upgrade1 {
+  input: [[crystalFluix, "oc:circuitChip1", crystalFluix]
+          ["", "oc:materialCard", ""]]
+}
+
 chunkloaderUpgrade {
   input: [[ingotGold, blockGlass, ingotGold]
           ["oc:circuitChip3", eyeOfEnder, "oc:circuitChip3"]
@@ -710,21 +717,11 @@ transposer {
 meTransposer {
   input: [["oc:lanCard", "oc:cable", "oc:cable"]
           ["oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
-          [{item="appliedenergistics2:tile.BlockInterface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
-}
-meDualTransposer {
-  input: [["oc:lanCard", "oc:cable", "oc:cable"]
-          ["oc:transposer", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]
-          [{item="ae2fc:fluid_interface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
+          ["oc:me_upgrade1", {item="appliedenergistics2:item.ItemMultiPart", subID=36}, {item="appliedenergistics2:item.ItemMultiPart", subID=36}]]
 }
 meActuator {
   input: [["oc:lanCard", "oc:cable", "oc:cable"]
-          ["oc:transposer", {item="appliedenergistics2:tile.BlockInterface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
-          ["oc:adapter", "", ""]]
-}
-meDualActuator {
-  input: [["oc:lanCard", "oc:cable", "oc:cable"]
-          ["oc:transposer", {item="ae2fc:fluid_interface"}, {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
+          ["oc:transposer", "oc:me_upgrade1", {item="appliedenergistics2:item.ItemMultiPart", subID=536}]
           ["oc:adapter", "", ""]]
 }
 waypoint {

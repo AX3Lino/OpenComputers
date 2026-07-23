@@ -245,9 +245,7 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.UpgradeAE2,
       Constants.ItemName.UpgradeAE3,
       Constants.BlockName.METransposer,
-      Constants.BlockName.MEDualTransposer,
-      Constants.BlockName.MEActuator,
-      Constants.BlockName.MEDualActuator
+      Constants.BlockName.MEActuator
     )
     blacklistHost(classOf[internal.Drone],
       Constants.BlockName.Keyboard,
@@ -308,9 +306,7 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.LeashUpgrade,
       Constants.ItemName.RITEGUpgrade,
       Constants.BlockName.METransposer,
-      Constants.BlockName.MEDualTransposer,
-      Constants.BlockName.MEActuator,
-      Constants.BlockName.MEDualActuator
+      Constants.BlockName.MEActuator
     )
     blacklistHost(classOf[internal.Tablet],
       Constants.BlockName.ScreenTier1,
@@ -340,9 +336,7 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.UpgradeAE2,
       Constants.ItemName.UpgradeAE3,
       Constants.BlockName.METransposer,
-      Constants.BlockName.MEDualTransposer,
-      Constants.BlockName.MEActuator,
-      Constants.BlockName.MEDualActuator
+      Constants.BlockName.MEActuator
     )
 
     if (!WirelessRedstone.isAvailable) {

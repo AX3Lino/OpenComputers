@@ -28,6 +28,11 @@ trait AdapterInterfacing extends prefab.ManagedEnvironment with WorldAware {
 
   // ----------------------------------------------------------------------- //
 
+  /** Network address of whatever driver-backed component ended up connected on the given side, if any. */
+  def connectedAddress(side: ForgeDirection): Option[String] = blocks(side.ordinal()).map { case (environment, _) => environment.node.address }
+
+  // ----------------------------------------------------------------------- //
+
   override def canUpdate = true
 
   override def update() {

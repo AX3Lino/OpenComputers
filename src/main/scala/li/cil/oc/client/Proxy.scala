@@ -66,7 +66,6 @@ private[oc] class Proxy extends CommonProxy {
       ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Hologram], HologramRendererFallback)
     if (Mods.AppliedEnergistics2.isAvailable) {
       ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.MEActuator], ActuatorRenderer)
-      ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.MEDualActuator], ActuatorRenderer)
     }
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Microcontroller], MicrocontrollerRenderer)
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.NetSplitter], NetSplitterRenderer)
