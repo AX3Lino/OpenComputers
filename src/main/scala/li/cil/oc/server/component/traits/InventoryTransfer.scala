@@ -15,7 +15,7 @@ trait InventoryTransfer extends traits.WorldAware with traits.SideRestricted {
   def fluidTransferRate(): Int;
 
   // Override to let a side argument address a network resource (e.g. an ME network) instead of a physical
-  // inventory/tank at a world position - see METransposer/MEDualTransposer for the "me" side implementation.
+  // inventory/tank at a world position - see METransposer for the "me" side implementation.
   protected def isVirtualSide(args: Arguments, index: Int): Boolean = false
 
   protected def virtualSideBothError: String = "source and sink cannot both be a virtual side"

@@ -79,7 +79,6 @@ private[oc] class Proxy extends CommonProxy {
     }
     if (li.cil.oc.integration.Mods.AppliedEnergistics2.isAvailable) {
       ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.MEActuator], ActuatorRenderer)
-      ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.MEDualActuator], ActuatorRenderer)
     }
 
     MinecraftForgeClient.registerItemRenderer(Items.get(Constants.ItemName.Floppy).createItemStack(1).getItem, ItemRenderer)

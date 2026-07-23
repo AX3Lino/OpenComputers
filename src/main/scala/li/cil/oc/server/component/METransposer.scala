@@ -6,6 +6,7 @@ import appeng.api.AEApi
 import appeng.api.config.Actionable
 import appeng.api.networking.security.IActionHost
 import appeng.api.networking.security.MachineSource
+import appeng.api.storage.data.IAEFluidStack
 import appeng.api.storage.data.IAEItemStack
 import appeng.me.GridAccessException
 import appeng.me.helpers.AENetworkProxy
@@ -27,13 +28,16 @@ import li.cil.oc.integration.appeng.AEStackFactory
 import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.DatabaseAccess
 import li.cil.oc.util.ExtendedArguments._
+import li.cil.oc.util.FluidUtils
 import li.cil.oc.util.InventoryUtils
 import net.minecraft.item.ItemStack
 import net.minecraftforge.common.util.ForgeDirection
+import net.minecraftforge.fluids.FluidContainerRegistry
+import net.minecraftforge.fluids.FluidStack
 
 import scala.collection.convert.WrapAsJava._
 
-// A Transposer whose seventh, virtual side is an ME network, for items only.
+// A Transposer whose seventh, virtual side is an ME network, for both items and fluids.
 object METransposer {
 
   abstract class Common extends Transposer.Common {
@@ -70,6 +74,11 @@ object METransposer {
           .map(_.getInteger(TransposerData.FLUID_TRANSFER_RATE))
           .getOrElse(Settings.get.transposerFluidTransferRate)
       case _ => 0
+    }
+
+    private def pauseForFluid(context: Context, moved: Int) {
+      val delay = moved.toDouble / fluidTransferRate().toDouble - 0.05
+      if (delay > 0) context.pause(delay)
     }
 
     // ----------------------------------------------------------------------- //
@@ -111,6 +120,23 @@ object METransposer {
       }
     }
 
+    private def parseFluidFilter(args: Arguments, offset: Int, amount: Int): IAEFluidStack = {
+      if (args.isTable(offset)) {
+        Option(AEStackFactory.parse[IAEFluidStack](args.checkTable(offset))).map { s =>
+          s.setStackSize(amount)
+          s
+        }.orNull
+      }
+      else {
+        Option(DatabaseAccess.getStackFromDatabase(node, args, offset)).flatMap { s =>
+          Option(FluidContainerRegistry.getFluidForFilledItem(s))
+        }.map { fluid =>
+          fluid.amount = amount
+          AEApi.instance.storage.createFluidStack(fluid)
+        }.orNull
+      }
+    }
+
     // ----------------------------------------------------------------------- //
     // Item transfers.
 
@@ -123,9 +149,6 @@ object METransposer {
 
     override protected def transferItemVirtual(context: Context, args: Arguments, sourceIsMe: Boolean): Array[AnyRef] =
       if (sourceIsMe) transferItemFromMe(args) else transferItemToMe(args)
-
-    override protected def transferFluidVirtual(context: Context, args: Arguments, sourceIsMe: Boolean): Array[AnyRef] =
-      result(Unit, "this device cannot transfer fluids to or from the ME network")
 
     private def transferItemFromMe(args: Arguments): Array[AnyRef] = {
       val sinkSide = checkSideForAction(args, 1)
@@ -202,6 +225,99 @@ object METransposer {
         case _: GridAccessException => result(Unit, "no ME network")
       }
     }
+
+    // ----------------------------------------------------------------------- //
+    // Fluid transfers.
+
+    // Overridden only to attach ME-specific doc text; the virtual-side dispatch itself lives in InventoryTransfer.
+    @Callback(doc = """function(sourceSide, sinkSide[, count:number[, sourceTank:number]]):boolean, number -- Transfer some fluid between two tanks. Either side may also be the string "me" (or 6) for the ME network; pulling from ME requires a filter (table or dbAddress:string, dbEntry:number). Returns operation result and filled amount""")
+    override def transferFluid(context: Context, args: Arguments): Array[AnyRef] = super.transferFluid(context, args)
+
+    override protected def transferFluidVirtual(context: Context, args: Arguments, sourceIsMe: Boolean): Array[AnyRef] =
+      if (sourceIsMe) transferFluidFromMe(context, args) else transferFluidToMe(context, args)
+
+    private def transferFluidFromMe(context: Context, args: Arguments): Array[AnyRef] = {
+      val sinkSide = checkSideForAction(args, 1)
+      val sinkPos = position.offset(sinkSide)
+      val filterAt = filterIndex(args)
+      if (filterAt < 0) return result(Unit, "filter required when pulling from the ME network")
+      val count = if (filterAt > 2) args.optFluidCount(2) else FluidContainerRegistry.BUCKET_VOLUME
+
+      val request = parseFluidFilter(args, filterAt, count)
+      if (request == null) return result(Unit, "invalid filter")
+
+      val handler = FluidUtils.fluidHandlerAt(sinkPos).getOrElse(return result(Unit, "no tank"))
+
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      try {
+        if (!p.isActive) return result(Unit, "no ME network")
+        val storage = p.getStorage.getFluidInventory
+        val energy = p.getEnergy
+        val source = new MachineSource(actionHost)
+
+        val simulated = request.getFluidStack
+        val fits = handler.fill(sinkSide.getOpposite, simulated, false)
+        if (fits <= 0) return result(false, 0)
+
+        request.setStackSize(fits)
+        val extracted = Platform.poweredExtraction(energy, storage, request, source)
+        if (extracted == null || extracted.getStackSize == 0) return result(false, 0)
+
+        val stack = extracted.getFluidStack
+        val filled = handler.fill(sinkSide.getOpposite, stack, true)
+        if (filled < stack.amount) {
+          val leftover = extracted.copy()
+          leftover.setStackSize(stack.amount - filled)
+          storage.injectItems(leftover, Actionable.MODULATE, source)
+        }
+        pauseForFluid(context, filled)
+        result(filled > 0, filled)
+      }
+      catch {
+        case _: GridAccessException => result(Unit, "no ME network")
+      }
+    }
+
+    private def transferFluidToMe(context: Context, args: Arguments): Array[AnyRef] = {
+      val sourceSide = checkSideForAction(args, 0)
+      val sourcePos = position.offset(sourceSide)
+      val count = args.optFluidCount(2)
+      val sourceTank = args.optInteger(3, -1)
+      val handler = FluidUtils.fluidHandlerAt(sourcePos).getOrElse(return result(Unit, "no tank"))
+      val drainSide = sourceSide.getOpposite
+
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      try {
+        if (!p.isActive) return result(Unit, "no ME network")
+        val storage = p.getStorage.getFluidInventory
+        val energy = p.getEnergy
+        val source = new MachineSource(actionHost)
+
+        val simulated =
+          if (sourceTank < 0) handler.drain(drainSide, count, false)
+          else {
+            val info = handler.getTankInfo(drainSide)
+            if (info == null || sourceTank >= info.length || info(sourceTank).fluid == null) null
+            else {
+              val fluid = info(sourceTank).fluid.copy()
+              fluid.amount = count
+              handler.drain(drainSide, fluid, false)
+            }
+          }
+        if (simulated == null || simulated.amount <= 0) return result(false, 0)
+
+        val leftover = Platform.poweredInsert(energy, storage, AEApi.instance.storage.createFluidStack(simulated.copy()), source)
+        val accepted = simulated.amount - (if (leftover == null) 0 else leftover.getStackSize.toInt)
+        if (accepted <= 0) return result(false, 0)
+
+        handler.drain(drainSide, new FluidStack(simulated.getFluid, accepted), true)
+        pauseForFluid(context, accepted)
+        result(true, accepted)
+      }
+      catch {
+        case _: GridAccessException => result(Unit, "no ME network")
+      }
+    }
   }
 
   // Shared by every block-hosted flavor with an AE2 grid proxy on the tile entity itself (METransposer and friends).
@@ -234,6 +350,7 @@ object METransposer {
   /** Hosted by the ME Transposer block's own tile entity. */
   class Block(val host: tileentity.METransposer) extends Common with Transposer.BlockHost with GridHost
 
+  /** Hosted as a microcontroller build component (Slot.Upgrade). */
   class Upgrade(val host: EnvironmentHost) extends Common with GridUpgradeHost {
     override def fluidTransferRate(): Int = upgradeFluidTransferRate(host, Constants.BlockName.METransposer)
   }

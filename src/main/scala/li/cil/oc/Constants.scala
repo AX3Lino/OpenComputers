@@ -25,8 +25,6 @@ object Constants {
     final val HologramTier2 = "hologram2"
     final val Keyboard = "keyboard"
     final val MEActuator = "meActuator"
-    final val MEDualActuator = "meDualActuator"
-    final val MEDualTransposer = "meDualTransposer"
     final val METransposer = "meTransposer"
     final val Microcontroller = "microcontroller"
     final val MotionSensor = "motionSensor"
