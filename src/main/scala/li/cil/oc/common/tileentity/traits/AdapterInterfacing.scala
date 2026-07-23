@@ -22,6 +22,11 @@ trait AdapterInterfacing extends Environment with OpenSides with Analyzable {
 
   // ----------------------------------------------------------------------- //
 
+  /** Network address of whatever driver-backed component ended up connected on the given side, if any. */
+  def connectedAddress(side: ForgeDirection): Option[String] = blocks(side.ordinal()).map { case (environment, _) => environment.node.address }
+
+  // ----------------------------------------------------------------------- //
+
   override def setSideOpen(side: ForgeDirection, value: Boolean) {
     super.setSideOpen(side, value)
     if (isServer) {
