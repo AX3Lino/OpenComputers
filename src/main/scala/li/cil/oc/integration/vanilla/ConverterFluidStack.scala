@@ -4,6 +4,8 @@ import java.util
 
 import li.cil.oc.Settings
 import li.cil.oc.api
+import li.cil.oc.integration.util.MapUtils.MapWrapper
+import net.minecraftforge.fluids.{FluidRegistry, FluidStack}
 
 import scala.collection.convert.WrapAsScala._
 
@@ -23,4 +25,17 @@ object ConverterFluidStack extends api.driver.Converter {
         }
       case _ =>
     }
+
+  def parse(args: util.Map[_, _]): FluidStack = {
+    val id = args.getInt("id")
+    val name = args.getString("name")
+    val fluid = (id, name) match {
+      case (Some(i), _) => FluidRegistry.getFluid(i)
+      case (_, Some(n)) => FluidRegistry.getFluid(n)
+      case _ => throw new IllegalArgumentException("fluid id or name expected")
+    }
+    if (fluid == null) throw new IllegalArgumentException("fluid not found")
+    val amount = args.getInt("amount").getOrElse(0)
+    new FluidStack(fluid, amount)
+  }
 }

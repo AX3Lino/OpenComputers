@@ -4,18 +4,21 @@ import java.util
 
 import li.cil.oc.Settings
 import li.cil.oc.api
+import li.cil.oc.integration.util.MapUtils.MapWrapper
 import li.cil.oc.util.ExtendedNBT._
 import net.minecraft.enchantment.Enchantment
 import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.item
 import net.minecraft.item.Item
+import net.minecraft.item.ItemStack
 import net.minecraft.nbt.CompressedStreamTools
+import net.minecraft.nbt.NBTSizeTracker
 import net.minecraft.nbt.NBTTagString
-import net.minecraftforge.common.util.Constants.NBT
-import net.minecraftforge.oredict.OreDictionary
 
 import scala.collection.convert.WrapAsScala._
 import scala.collection.mutable
+import net.minecraftforge.common.util.Constants.NBT
+import net.minecraftforge.oredict.OreDictionary
 
 object ConverterItemStack extends api.driver.Converter {
   override def convert(value: AnyRef, output: util.Map[AnyRef, AnyRef]) =
@@ -64,4 +67,25 @@ object ConverterItemStack extends api.driver.Converter {
         }
       case _ =>
     }
+
+  def parse(args: util.Map[_, _]): ItemStack = {
+    val id = args.getInt("id")
+    val name = args.getString("name")
+    val item = (id, name) match {
+      case (Some(i), _) => Item.itemRegistry.getObjectById(i).asInstanceOf[Item]
+      case (_, Some(n)) => Item.itemRegistry.getObject(n).asInstanceOf[Item]
+      case _ => throw new IllegalArgumentException("item id or name expected")
+    }
+    if (item == null) throw new IllegalArgumentException("item not found")
+    val amount = args.getInt("size").getOrElse(1)
+    val damage = args.getInt("damage").getOrElse(0)
+    val stack = new ItemStack(item, amount, damage)
+    if (Settings.get.allowItemStackNBTTags) {
+      args.getBytes("tag").foreach { tag =>
+        val nbtBase = CompressedStreamTools.func_152457_a(tag, NBTSizeTracker.field_152451_a)
+        stack.setTagCompound(nbtBase)
+      }
+    }
+    stack
+  }
 }

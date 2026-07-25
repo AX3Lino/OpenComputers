@@ -24,6 +24,7 @@ import li.cil.oc.api.network.Component
 import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.common.tileentity
+import li.cil.oc.integration.appeng.AEStackFactory
 import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.FluidUtils
@@ -80,10 +81,10 @@ object METransposer {
     def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
 
     // ----------------------------------------------------------------------- //
-    // Filter parsing for ME requests: a database address+entry index, at argument index 2 or 3.
+    // Filter parsing for ME requests: a descriptor table or a database address+entry index, at argument index 2 or 3.
 
     protected def filterIndex(args: Arguments): Int =
-      Seq(2, 3).find(i => i < args.count && args.isString(i)).getOrElse(-1)
+      Seq(2, 3).find(i => i < args.count && (args.isTable(i) || args.isString(i))).getOrElse(-1)
 
     /** Looks up the item stack an upgrade database entry (address at `offset`, slot at `offset + 1`) represents. */
     protected def stackFromDatabase(args: Arguments, offset: Int): Option[ItemStack] =
@@ -99,21 +100,38 @@ object METransposer {
 
     /** Returns the parsed stack (or null) and the argument index following the filter. */
     protected def parseItemFilter(args: Arguments, offset: Int, amount: Int): (IAEItemStack, Int) = {
-      val stack = stackFromDatabase(args, offset).map { s =>
-        val aes = AEApi.instance.storage.createItemStack(s)
-        aes.setStackSize(amount)
-        aes
-      }.orNull
-      (stack, offset + 2)
+      if (args.isTable(offset)) {
+        val stack = Option(AEStackFactory.parseItem(args.checkTable(offset))).map { s =>
+          s.setStackSize(amount)
+          s
+        }.orNull
+        (stack, offset + 1)
+      }
+      else {
+        val stack = stackFromDatabase(args, offset).map { s =>
+          val aes = AEApi.instance.storage.createItemStack(s)
+          aes.setStackSize(amount)
+          aes
+        }.orNull
+        (stack, offset + 2)
+      }
     }
 
     private def parseFluidFilter(args: Arguments, offset: Int, amount: Int): IAEFluidStack = {
-      stackFromDatabase(args, offset).flatMap { s =>
-        Option(FluidContainerRegistry.getFluidForFilledItem(s))
-      }.map { fluid =>
-        fluid.amount = amount
-        AEApi.instance.storage.createFluidStack(fluid)
-      }.orNull
+      if (args.isTable(offset)) {
+        Option(AEStackFactory.parseFluid(args.checkTable(offset))).map { s =>
+          s.setStackSize(amount)
+          s
+        }.orNull
+      }
+      else {
+        stackFromDatabase(args, offset).flatMap { s =>
+          Option(FluidContainerRegistry.getFluidForFilledItem(s))
+        }.map { fluid =>
+          fluid.amount = amount
+          AEApi.instance.storage.createFluidStack(fluid)
+        }.orNull
+      }
     }
 
     // ----------------------------------------------------------------------- //
