@@ -246,9 +246,7 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.UpgradeAE2,
       Constants.ItemName.UpgradeAE3,
       Constants.BlockName.METransposer,
-      Constants.BlockName.MEDualTransposer,
-      Constants.BlockName.MEActuator,
-      Constants.BlockName.MEDualActuator
+      Constants.BlockName.MEActuator
     )
     blacklistHost(classOf[internal.Drone],
       Constants.BlockName.Keyboard,

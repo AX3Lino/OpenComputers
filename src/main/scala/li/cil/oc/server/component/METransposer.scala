@@ -8,6 +8,7 @@ import appeng.api.networking.security.IActionHost
 import appeng.api.networking.security.MachineSource
 import appeng.api.storage.data.IAEFluidStack
 import appeng.api.storage.data.IAEItemStack
+import appeng.api.storage.data.IAEStack
 import appeng.me.GridAccessException
 import appeng.me.helpers.AENetworkProxy
 import appeng.me.helpers.IGridProxyable
@@ -30,12 +31,15 @@ import li.cil.oc.util.DatabaseAccess
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.FluidUtils
 import li.cil.oc.util.InventoryUtils
+import net.minecraft.item.Item
 import net.minecraft.item.ItemStack
 import net.minecraftforge.common.util.ForgeDirection
 import net.minecraftforge.fluids.FluidContainerRegistry
 import net.minecraftforge.fluids.FluidStack
 
 import scala.collection.convert.WrapAsJava._
+import scala.collection.convert.WrapAsScala._
+import scala.collection.mutable
 
 // A Transposer whose seventh, virtual side is an ME network, for both items and fluids.
 object METransposer {
@@ -94,6 +98,65 @@ object METransposer {
 
     @Callback(doc = """function():boolean -- Get whether the device is actively connected to an ME network (powered and got a channel).""")
     def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
+
+    private def convert(stack: IAEStack[_]): util.Map[String, AnyRef] = {
+      val converted = new util.HashMap[AnyRef, AnyRef]()
+      AEStackFactory.convert(stack, converted)
+      val hash = new util.HashMap[String, AnyRef]()
+      converted.foreach { case (key: String, value) => hash.put(key, value); case _ => }
+      hash
+    }
+
+    private def matches(stack: util.Map[String, AnyRef], filter: mutable.Map[String, AnyRef]): Boolean = {
+      if (stack == null) false
+      else filter.forall { case (key, value) =>
+        val stackValue = stack.get(key)
+        if (stackValue == null) false
+        else (value, stackValue) match {
+          case (number: Number, stackNumber: Number) => number.intValue() == stackNumber.intValue()
+          case (arr: Array[Byte], stackArr: Array[Byte]) => arr.sameElements(stackArr)
+          case (str: String, stackArr: Array[Byte]) => str.equals(stackArr.mkString)
+          case (_, _) => value.toString.equals(stackValue.toString)
+        }
+      }
+    }
+
+    private def networkFilter(args: Arguments): mutable.Map[String, AnyRef] =
+      args.optTable(0, Map.empty[AnyRef, AnyRef]).collect { case (key: String, value: AnyRef) => (key, value) }
+
+    @Callback(doc = """function([filter:table]):table -- Get a list of the stored items in this device's own ME network.""")
+    def getItemsInNetwork(context: Context, args: Arguments): Array[AnyRef] = {
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      if (!p.isActive) return result(Unit, "no ME network")
+      val filter = networkFilter(args)
+      result(p.getStorage.getItemInventory.getStorageList.view.map(convert).filter(matches(_, filter)).toArray)
+    }
+
+    @Callback(doc = """function([filter:table]):table -- Get a list of the stored fluids in this device's own ME network.""")
+    def getFluidsInNetwork(context: Context, args: Arguments): Array[AnyRef] = {
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      if (!p.isActive) return result(Unit, "no ME network")
+      val filter = networkFilter(args)
+      result(p.getStorage.getFluidInventory.getStorageList.view.map(convert).filter(matches(_, filter)).toArray)
+    }
+
+    @Callback(doc = """function(filter:table):table -- Get a list of the stored items in this device's own ME network matching the filter. Filter is an array of item IDs or names.""")
+    def getItemsInNetworkById(context: Context, args: Arguments): Array[AnyRef] = {
+      val p = proxy.getOrElse(return result(Unit, "no ME network"))
+      if (!p.isActive) return result(Unit, "no ME network")
+      val table = args.checkTable(0)
+      val itemFilterSet = mutable.LinkedHashSet.empty[Item]
+      for (i <- 0 until table.size()) {
+        table.get(i + 1) match {
+          case itemNumberId: Number => itemFilterSet += Item.itemRegistry.getObjectById(itemNumberId.intValue()).asInstanceOf[Item]
+          case itemStringId: String => itemFilterSet += Item.itemRegistry.getObject(itemStringId).asInstanceOf[Item]
+          case _ => throw new IllegalArgumentException(s"bad argument in filter table at index ${i + 1} (number or string expected)")
+        }
+      }
+      result(p.getStorage.getItemInventory.getStorageList.view.filter(item => itemFilterSet.contains(item.getItem)).map(convert).toArray)
+    }
+
+    // TODO: Essentia reads (ThaumicEnergistics) - depends on which ME upgrade card ends up providing that connectivity.
 
     // ----------------------------------------------------------------------- //
     // Filter parsing for ME requests: a descriptor table or a database address+entry index, at argument index 2 or 3.

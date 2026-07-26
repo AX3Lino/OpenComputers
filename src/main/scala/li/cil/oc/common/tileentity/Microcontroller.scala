@@ -369,7 +369,8 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
 
   @Optional.Method(modid = Mods.IDs.AppliedEnergistics2)
   private def scheduleMEProxyReady() {
-    if (hasMECard) EventHandler.scheduleServer(() => if (!isInvalid && hasMECard) {
+    // Scheduled unconditionally: hasMECard isn't populated yet on a fresh placement at this point.
+    EventHandler.scheduleServer(() => if (!isInvalid && hasMECard) {
       val proxy = meNetworkProxy()
       if (!proxy.isReady) proxy.onReady()
     })
