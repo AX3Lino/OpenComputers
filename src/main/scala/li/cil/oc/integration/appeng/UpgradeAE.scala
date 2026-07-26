@@ -22,6 +22,9 @@ import li.cil.oc.api.network._
 import li.cil.oc.api.prefab.ManagedEnvironment
 import li.cil.oc.common.item.Delegator
 import li.cil.oc.integration.appeng
+import li.cil.oc.integration.util.MapUtils.MapWrapper
+import li.cil.oc.integration.vanilla.ConverterFluidStack
+import li.cil.oc.integration.vanilla.ConverterItemStack
 import li.cil.oc.server.network.Component
 import net.minecraft.item.ItemStack
 import net.minecraftforge.common.util.ForgeDirection
@@ -224,25 +227,39 @@ class UpgradeAE(val host: EnvironmentHost, val tier: Int) extends ManagedEnviron
     }
   }
 
-  @Callback(doc = """function(database:address, entry:number[, number:amount]):number -- Get items from your ae system.""")
+  @Callback(doc = """function(database:address, entry:number[, number:amount]):number OR function(detail:table):number -- Get items from your ae system.""")
   def requestItems(context: Context, args: Arguments): Array[AnyRef] = {
 
-    val address = args.checkString(0)
-    val entry = args.checkInteger(1)
-    val amount = args.optInteger(2, 64)
     val selected = agent.selectedSlot
     val invRobot = agent.mainInventory
     if (invRobot.getSizeInventory <= 0) return Array(0.underlying)
     val inv = getItemInventory
     if (inv == null) return Array(0.underlying)
-    val n: Node = node.network.node(address)
-    if (n == null) throw new IllegalArgumentException("no such component")
-    if (!n.isInstanceOf[Component])
-      throw new IllegalArgumentException("no such component")
-    val env: Environment = n.host
-    if (!env.isInstanceOf[Database])
-      throw new IllegalArgumentException("not a database")
-    val database: Database = env.asInstanceOf[Database]
+
+    val stack =
+      if (args.isTable(0)) {
+        val t = args.checkTable(0)
+        val s = ConverterItemStack.parse(t)
+        s.stackSize = t.getInt("size").getOrElse(64)
+        s
+      }
+      else {
+        val address = args.checkString(0)
+        val entry = args.checkInteger(1)
+        val amount = args.optInteger(2, 64)
+        val n: Node = node.network.node(address)
+        if (n == null) throw new IllegalArgumentException("no such component")
+        if (!n.isInstanceOf[Component])
+          throw new IllegalArgumentException("no such component")
+        val env: Environment = n.host
+        if (!env.isInstanceOf[Database])
+          throw new IllegalArgumentException("not a database")
+        val database: Database = env.asInstanceOf[Database]
+        val fetched = database.getStackInSlot(entry - 1)
+        if (fetched == null) return Array(0.underlying)
+        fetched.stackSize = amount
+        fetched
+      }
     val sel = invRobot.getStackInSlot(selected)
     val inSlot =
       if (sel == null)
@@ -254,9 +271,7 @@ class UpgradeAE(val host: EnvironmentHost, val tier: Int) extends ManagedEnviron
         64
       else
         sel.getMaxStackSize
-    val stack = database.getStackInSlot(entry - 1)
-    if (stack == null) return Array(0.underlying)
-    stack.stackSize = Math.min(amount, maxSize - inSlot)
+    stack.stackSize = Math.min(stack.stackSize, maxSize - inSlot)
     val stack2 = stack.copy
     stack2.stackSize = 1
     val sel2 =
@@ -308,29 +323,40 @@ class UpgradeAE(val host: EnvironmentHost, val tier: Int) extends ManagedEnviron
     }
   }
 
-  @Callback(doc = """function(database:address, entry:number[, number:amount]):number -- Get fluid from your ae system.""")
+  @Callback(doc = """function(database:address, entry:number[, number:amount]):number OR function(detail:table):number -- Get fluid from your ae system.""")
   def requestFluids(context: Context, args: Arguments): Array[AnyRef] = {
-    val address = args.checkString(0)
-    val entry = args.checkInteger(1)
-    val amount = args.optInteger(2, FluidContainerRegistry.BUCKET_VOLUME)
     val tanks = agent.tank
     val selected = agent.selectedTank
     if (tanks.tankCount <= 0) return Array(0.underlying)
     val tank = tanks.getFluidTank(selected)
     val inv = getFluidInventory
     if (tank == null || inv == null) return Array(0.underlying)
-    val n: Node = node.network.node(address)
-    if (n == null) throw new IllegalArgumentException("no such component")
-    if (!n.isInstanceOf[Component])
-      throw new IllegalArgumentException("no such component")
-    val env: Environment = n.host
-    if (!env.isInstanceOf[Database])
-      throw new IllegalArgumentException("not a database")
-    val database: Database = env.asInstanceOf[Database]
-    val fluid = FluidContainerRegistry.getFluidForFilledItem(
-      database.getStackInSlot(entry - 1)
-    )
-    fluid.amount = amount
+
+    val fluid =
+      if (args.isTable(0)) {
+        val t = args.checkTable(0)
+        val f = ConverterFluidStack.parse(t)
+        if (t.getInt("amount").isEmpty) f.amount = FluidContainerRegistry.BUCKET_VOLUME
+        f
+      }
+      else {
+        val address = args.checkString(0)
+        val entry = args.checkInteger(1)
+        val amount = args.optInteger(2, FluidContainerRegistry.BUCKET_VOLUME)
+        val n: Node = node.network.node(address)
+        if (n == null) throw new IllegalArgumentException("no such component")
+        if (!n.isInstanceOf[Component])
+          throw new IllegalArgumentException("no such component")
+        val env: Environment = n.host
+        if (!env.isInstanceOf[Database])
+          throw new IllegalArgumentException("not a database")
+        val database: Database = env.asInstanceOf[Database]
+        val f = FluidContainerRegistry.getFluidForFilledItem(
+          database.getStackInSlot(entry - 1)
+        )
+        f.amount = amount
+        f
+      }
     val fluid2 = fluid.copy()
     fluid2.amount = tank.fill(fluid, false)
     if (fluid2.amount == 0) return Array(0.underlying)

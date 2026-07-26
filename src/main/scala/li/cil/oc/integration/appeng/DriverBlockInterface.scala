@@ -11,6 +11,7 @@ import li.cil.oc.api.network.Component
 import li.cil.oc.api.network.ManagedEnvironment
 import li.cil.oc.api.prefab.DriverSidedTileEntity
 import li.cil.oc.integration.ManagedTileEntityEnvironment
+import li.cil.oc.integration.vanilla.ConverterItemStack
 import li.cil.oc.util.DatabaseAccess
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.ResultWrapper.result
@@ -39,14 +40,37 @@ object DriverBlockInterface extends DriverSidedTileEntity {
       result(stack)
     }
 
-    @Callback(doc = "function([slot:number][, database:address, entry:number[, size:number]]):boolean -- Configure the interface.")
+    @Callback(doc = "function([slot:number][, database:address, entry:number[, size:number]] | [, detail:table]):boolean -- Configure the interface.")
     def setInterfaceConfiguration(context: Context, args: Arguments): Array[AnyRef] = {
       val config = tileEntity.getInventoryByName("config")
-      val slot = if (args.isString(0)) 0 else args.optSlot(config, 0, 0)
-      config.setInventorySlotContents(slot, getStack(args))
+      val slotOmitted = args.isString(0) || args.isTable(0)
+      val slot = if (slotOmitted) 0 else args.optSlot(config, 0, 0)
+      config.setInventorySlotContents(slot, getConfigStack(args, if (slotOmitted) 0 else 1))
       context.pause(0.5)
       result(true)
     }
+
+    private def getConfigStack(args: Arguments, offset: Int) =
+      if (args.count <= offset) null
+      else if (args.isTable(offset)) ConverterItemStack.parse(args.checkTable(offset))
+      else {
+        val address = args.checkString(offset)
+        val entry = args.checkInteger(offset + 1)
+        val size = args.optInteger(offset + 2, 1)
+        node.network.node(address) match {
+          case component: Component => component.host match {
+            case database: Database =>
+              val dbStack = database.getStackInSlot(entry - 1)
+              if (dbStack == null || size < 1) null
+              else {
+                dbStack.stackSize = size
+                dbStack
+              }
+            case _ => throw new IllegalArgumentException("not a database")
+          }
+          case _ => throw new IllegalArgumentException("no such component")
+        }
+      }
 
     private def getStack(args: Arguments) =
       if (args.count > 1) {

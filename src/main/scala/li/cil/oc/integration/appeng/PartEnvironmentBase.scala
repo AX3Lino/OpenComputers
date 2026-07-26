@@ -7,6 +7,7 @@ import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Context
 import li.cil.oc.api.network.Component
 import li.cil.oc.api.network.ManagedEnvironment
+import li.cil.oc.integration.vanilla.ConverterItemStack
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.ResultWrapper.result
 import net.minecraftforge.common.util.ForgeDirection
@@ -29,17 +30,23 @@ trait PartEnvironmentBase extends ManagedEnvironment {
     }
   }
 
-  // function(side:number[, slot:number][, database:address, entry:number[, size:number]]):boolean
+  // function(side:number[, slot:number][, database:address, entry:number[, size:number]] | [, detail:table]):boolean
   def setPartConfig[PartType <: ISegmentedInventory : ClassTag](context: Context, args: Arguments): Array[AnyRef] = {
     val side = args.checkSideAny(0)
     host.getPart(side) match {
       case part: PartType =>
         val config = part.getInventoryByName("config")
-        val slot = if (args.isString(1)) 0 else args.optSlot(config, 1, 0)
-        val stack = if (args.count > 2) {
-          val (address, entry, size) =
-            if (args.isString(1)) (args.checkString(1), args.checkInteger(2), args.optInteger(3, 1))
-            else (args.checkString(2), args.checkInteger(3), args.optInteger(4, 1))
+        val slotOmitted = args.isString(1) || args.isTable(1)
+        val slot = if (slotOmitted) 0 else args.optSlot(config, 1, 0)
+        val offset = if (slotOmitted) 1 else 2
+        val stack = if (args.count <= offset) null
+        else if (args.isTable(offset)) {
+          ConverterItemStack.parse(args.checkTable(offset))
+        }
+        else {
+          val address = args.checkString(offset)
+          val entry = args.checkInteger(offset + 1)
+          val size = args.optInteger(offset + 2, 1)
 
           node.network.node(address) match {
             case component: Component => component.host match {
@@ -55,7 +62,6 @@ trait PartEnvironmentBase extends ManagedEnvironment {
             case _ => throw new IllegalArgumentException("no such component")
           }
         }
-        else null
         config.setInventorySlotContents(slot, stack)
         context.pause(0.5)
         result(true)
