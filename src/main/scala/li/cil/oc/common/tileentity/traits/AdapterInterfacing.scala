@@ -2,7 +2,7 @@ package li.cil.oc.common.tileentity.traits
 
 import li.cil.oc.Settings
 import li.cil.oc.api
-import li.cil.oc.api.network.{Analyzable, ManagedEnvironment, Node}
+import li.cil.oc.api.network.{Analyzable, Component, ManagedEnvironment, Node}
 import li.cil.oc.server.{PacketSender => ServerPacketSender}
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.nbt.NBTTagCompound
@@ -22,8 +22,13 @@ trait AdapterInterfacing extends Environment with OpenSides with Analyzable {
 
   // ----------------------------------------------------------------------- //
 
-  /** Network address of whatever driver-backed component ended up connected on the given side, if any. */
-  def connectedAddress(side: ForgeDirection): Option[String] = blocks(side.ordinal()).map { case (environment, _) => environment.node.address }
+  /** Name and network address of whatever driver-backed component ended up connected on the given side, if any. */
+  def connectedComponent(side: ForgeDirection): Option[(String, String)] = blocks(side.ordinal()).flatMap { case (environment, _) =>
+    environment.node match {
+      case component: Component => Some(component.name -> component.address)
+      case _ => None
+    }
+  }
 
   // ----------------------------------------------------------------------- //
 

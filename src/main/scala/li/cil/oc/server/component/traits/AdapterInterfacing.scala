@@ -2,6 +2,7 @@ package li.cil.oc.server.component.traits
 
 import li.cil.oc.Settings
 import li.cil.oc.api
+import li.cil.oc.api.network.Component
 import li.cil.oc.api.network.ManagedEnvironment
 import li.cil.oc.api.network.Node
 import li.cil.oc.api.prefab
@@ -28,8 +29,13 @@ trait AdapterInterfacing extends prefab.ManagedEnvironment with WorldAware {
 
   // ----------------------------------------------------------------------- //
 
-  /** Network address of whatever driver-backed component ended up connected on the given side, if any. */
-  def connectedAddress(side: ForgeDirection): Option[String] = blocks(side.ordinal()).map { case (environment, _) => environment.node.address }
+  /** Name and network address of whatever driver-backed component ended up connected on the given side, if any. */
+  def connectedComponent(side: ForgeDirection): Option[(String, String)] = blocks(side.ordinal()).flatMap { case (environment, _) =>
+    environment.node match {
+      case component: Component => Some(component.name -> component.address)
+      case _ => None
+    }
+  }
 
   // ----------------------------------------------------------------------- //
 
