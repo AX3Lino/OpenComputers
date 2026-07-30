@@ -38,27 +38,29 @@ object MEActuator {
     // ----------------------------------------------------------------------- //
     // Adapter-side correlation.
 
-    protected def connectedAddress(side: ForgeDirection): Option[String]
+    protected def connectedComponent(side: ForgeDirection): Option[(String, String)]
 
-    @Callback(doc = """function(side:number):string -- Get the network address of whatever's connected on the given side, or nil if none.""")
-    def getSideAddress(context: Context, args: Arguments): Array[AnyRef] = {
-      val side = args.checkSideAny(0)
-      connectedAddress(side) match {
-        case Some(address) => result(address)
-        case _ => result(Unit, "no component on that side")
+    @Callback(doc = """function([side:number]):table -- Get {name, address} of whatever's connected on the given side, or a table mapping side number to {name, address} for all sides if none is given.""")
+    def getConnectedComponents(context: Context, args: Arguments): Array[AnyRef] = {
+      if (args.count() > 0) {
+        val side = args.checkSideAny(0)
+        connectedComponent(side) match {
+          case Some((name, address)) => result(Map("name" -> name, "address" -> address))
+          case _ => result(Unit, "no component on that side")
+        }
       }
-    }
-
-    @Callback(doc = """function():table -- Get a table mapping side number to the address of whatever's connected there.""")
-    def getConnectedAddresses(context: Context, args: Arguments): Array[AnyRef] = {
-      val addresses = ForgeDirection.VALID_DIRECTIONS.flatMap(side => connectedAddress(side).map(side.ordinal.underlying -> _)).toMap
-      result(addresses)
+      else {
+        val components = ForgeDirection.VALID_DIRECTIONS.flatMap(side => connectedComponent(side).map { case (name, address) =>
+          side.ordinal.underlying -> Map("name" -> name, "address" -> address)
+        }).toMap
+        result(components)
+      }
     }
   }
 
   /** Hosted by the ME Actuator block's own tile entity. */
   class Block(val host: tileentity.MEActuator) extends Common with Transposer.BlockHost with METransposer.GridHost {
-    override protected def connectedAddress(side: ForgeDirection) = host.connectedAddress(side)
+    override protected def connectedComponent(side: ForgeDirection) = host.connectedComponent(side)
   }
 
   /** Hosted as a microcontroller build component (Slot.Upgrade). */
