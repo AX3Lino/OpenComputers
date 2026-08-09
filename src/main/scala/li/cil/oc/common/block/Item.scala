@@ -90,6 +90,9 @@ class Item(value: Block) extends ItemBlock(value) {
         case keyboard: tileentity.Keyboard =>
           keyboard.setFromEntityPitchAndYaw(player)
           keyboard.setFromFacing(ForgeDirection.getOrientation(side))
+        case _: tileentity.Actuator =>
+          // Faces the block it was placed on (any of the six directions) - see
+          // Actuator.onBlockPlaced/createTileEntity, which already ran above.
         case rotatable: tileentity.traits.Rotatable =>
           rotatable.setFromEntityPitchAndYaw(player)
           if (!rotatable.validFacings.contains(rotatable.pitch)) {

@@ -51,6 +51,8 @@ private[oc] class Proxy extends CommonProxy {
     RenderingRegistry.registerBlockHandler(BlockRenderer)
     RenderingRegistry.registerEntityRenderingHandler(classOf[Drone], DroneRenderer)
 
+    ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Actuator], ActuatorRenderer)
+    ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.DualActuator], ActuatorRenderer)
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Adapter], AdapterRenderer)
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Assembler], AssemblerRenderer)
     ClientRegistry.bindTileEntitySpecialRenderer(classOf[tileentity.Case], CaseRenderer)

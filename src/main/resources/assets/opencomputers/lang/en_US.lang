@@ -4,6 +4,7 @@
 
 # Blocks
 tile.oc.accessPoint.name=§cAccess Point§7
+tile.oc.actuator.name=Actuator
 tile.oc.adapter.name=Adapter
 tile.oc.assembler.name=Electronics Assembler
 tile.oc.cable.name=Cable
@@ -17,6 +18,7 @@ tile.oc.chameliumBlock.name=Block of Chamelium
 tile.oc.charger.name=Charger
 tile.oc.disassembler.name=Disassembler
 tile.oc.diskDrive.name=Disk Drive
+tile.oc.dualActuator.name=Dual Actuator
 tile.oc.endstone.name=End Stone
 tile.oc.geolyzer.name=Geolyzer
 tile.oc.hologram1.name=Hologram Projector (Tier 1)

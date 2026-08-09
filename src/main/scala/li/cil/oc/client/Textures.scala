@@ -76,6 +76,10 @@ object Textures {
   val overlayNanomachines = new ResourceLocation(Settings.resourceDomain, "textures/gui/nanomachines_power.png")
   val overlayNanomachinesBar = new ResourceLocation(Settings.resourceDomain, "textures/gui/nanomachines_power_bar.png")
 
+  object Actuator {
+    var iconOn: IIcon = _
+  }
+
   object Adapter {
     var iconOn: IIcon = _
   }

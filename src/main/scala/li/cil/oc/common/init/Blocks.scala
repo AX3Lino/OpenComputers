@@ -11,6 +11,7 @@ import li.cil.oc.common.tileentity
 object Blocks {
   def init() {
     GameRegistry.registerTileEntity(classOf[tileentity.AccessPoint], Settings.namespace + "access_point")
+    GameRegistry.registerTileEntity(classOf[tileentity.Actuator], Settings.namespace + "actuator")
     GameRegistry.registerTileEntity(classOf[tileentity.Adapter], Settings.namespace + "adapter")
     GameRegistry.registerTileEntityWithAlternatives(classOf[tileentity.Assembler], Settings.namespace + "assembler", Settings.namespace + "robotAssembler")
     GameRegistry.registerTileEntity(classOf[tileentity.Cable], Settings.namespace + "cable")
@@ -20,6 +21,7 @@ object Blocks {
     GameRegistry.registerTileEntity(classOf[tileentity.Charger], Settings.namespace + "charger")
     GameRegistry.registerTileEntity(classOf[tileentity.DiskDrive], Settings.namespace + "disk_drive")
     GameRegistry.registerTileEntity(classOf[tileentity.Disassembler], Settings.namespace + "disassembler")
+    GameRegistry.registerTileEntity(classOf[tileentity.DualActuator], Settings.namespace + "dualActuator")
     GameRegistry.registerTileEntity(classOf[tileentity.Keyboard], Settings.namespace + "keyboard")
     GameRegistry.registerTileEntity(classOf[tileentity.Hologram], Settings.namespace + "hologram")
     GameRegistry.registerTileEntity(classOf[tileentity.Geolyzer], Settings.namespace + "geolyzer")
@@ -41,6 +43,9 @@ object Blocks {
     GameRegistry.registerTileEntity(classOf[tileentity.Waypoint], Settings.namespace + "waypoint")
 
     Items.registerBlock(new AccessPoint(), Constants.BlockName.AccessPoint)
+    // Recipe intentionally unset - open design question, see Actuator/DualActuator design discussion.
+    Items.registerBlock(new Actuator(), Constants.BlockName.Actuator)
+    Items.registerBlock(new DualActuator(), Constants.BlockName.DualActuator)
     Recipes.addBlock(new Adapter(), Constants.BlockName.Adapter, "oc:adapter")
     Recipes.addBlock(new Assembler(), Constants.BlockName.Assembler, "oc:assembler")
     Recipes.addBlock(new Cable(), Constants.BlockName.Cable, "oc:cable")

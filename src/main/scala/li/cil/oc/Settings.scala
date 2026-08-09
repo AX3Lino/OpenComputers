@@ -232,6 +232,8 @@ class Settings(val config: Config) {
   val dataCardComplexByte = config.getDouble("power.cost.dataCardComplexByte") max 0
   val dataCardAsymmetric = config.getDouble("power.cost.dataCardAsymmetric") max 0
   val transposerCost = config.getDouble("power.cost.transposer") max 0
+  val actuatorCost = config.getDouble("power.cost.actuator") max 0
+  val actuatorIdleAEPower = config.getDouble("power.cost.actuatorIdleAE") max 0
   val nanomachineCost = config.getDouble("power.cost.nanomachineInput") max 0
   val nanomachineReconfigureCost = config.getDouble("power.cost.nanomachinesReconfigure") max 0
   val mfuCost = config.getDouble("power.cost.mfuRelay") max 0

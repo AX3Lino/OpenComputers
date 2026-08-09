@@ -6,6 +6,7 @@ object Constants {
 
   object BlockName {
     final val AccessPoint = "accessPoint"
+    final val Actuator = "actuator"
     final val Adapter = "adapter"
     final val Assembler = "assembler"
     final val Cable = "cable"
@@ -19,6 +20,7 @@ object Constants {
     final val Charger = "charger"
     final val Disassembler = "disassembler"
     final val DiskDrive = "diskDrive"
+    final val DualActuator = "dualActuator"
     final val Endstone = "endstone"
     final val Geolyzer = "geolyzer"
     final val HologramTier1 = "hologram1"

@@ -123,6 +123,34 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         Transposer.render(block, x, y, z, renderer)
 
         true
+      case actuator: common.tileentity.Actuator =>
+        // Rotates the Side texture's arrow to point toward the actuator's facing on every face, not
+        // just the one it's actually facing - see FaceOrientation for the (empirically-derived) values.
+        //
+        // RenderBlocks' own uvRotateXXX fields are, confusingly, NOT named after the face they affect
+        // for the four lateral faces (confirmed directly in its source): renderFaceZNeg (the NORTH
+        // face) reads uvRotateEast, renderFaceZPos (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST)
+        // reads uvRotateNorth, and renderFaceXPos (EAST) reads uvRotateSouth. Only uvRotateTop/Bottom
+        // actually match their face (UP/DOWN). So the assignment below is intentionally crossed to
+        // match reality, not the field names.
+        val forward = actuator.facing
+        renderer.uvRotateBottom = FaceOrientation.get(ForgeDirection.DOWN, forward)
+        renderer.uvRotateTop = FaceOrientation.get(ForgeDirection.UP, forward)
+        renderer.uvRotateEast = FaceOrientation.get(ForgeDirection.NORTH, forward)
+        renderer.uvRotateWest = FaceOrientation.get(ForgeDirection.SOUTH, forward)
+        renderer.uvRotateNorth = FaceOrientation.get(ForgeDirection.WEST, forward)
+        renderer.uvRotateSouth = FaceOrientation.get(ForgeDirection.EAST, forward)
+
+        val result = renderer.renderStandardBlock(block, x, y, z)
+
+        renderer.uvRotateBottom = 0
+        renderer.uvRotateTop = 0
+        renderer.uvRotateNorth = 0
+        renderer.uvRotateSouth = 0
+        renderer.uvRotateWest = 0
+        renderer.uvRotateEast = 0
+
+        result
       case _ =>
         val result = renderer.renderStandardBlock(block, x, y, z)
 
@@ -140,31 +168,26 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
   val patchedRenderBlocksThreadLocal = new ThreadLocal[PatchedRenderBlocks]() {
     override def initialValue = new PatchedRenderBlocks()
   }
+
   // The texture flip this works around only seems to occur for blocks with custom block renderers?
   def patchedRenderer(renderer: RenderBlocks, block: Block) =
     if (needsFlipping(block)) {
-      val patchedRenderBlocks = patchedRenderBlocksThreadLocal.get()
-      patchedRenderBlocks.blockAccess = renderer.blockAccess
-      patchedRenderBlocks.overrideBlockTexture = renderer.overrideBlockTexture
-      patchedRenderBlocks.flipTexture = renderer.flipTexture
-      patchedRenderBlocks.renderAllFaces = renderer.renderAllFaces
-      patchedRenderBlocks.useInventoryTint = renderer.useInventoryTint
-      patchedRenderBlocks.renderFromInside = renderer.renderFromInside
-      patchedRenderBlocks.renderMinX = renderer.renderMinX
-      patchedRenderBlocks.renderMaxX = renderer.renderMaxX
-      patchedRenderBlocks.renderMinY = renderer.renderMinY
-      patchedRenderBlocks.renderMaxY = renderer.renderMaxY
-      patchedRenderBlocks.renderMinZ = renderer.renderMinZ
-      patchedRenderBlocks.renderMaxZ = renderer.renderMaxZ
-      patchedRenderBlocks.lockBlockBounds = renderer.lockBlockBounds
-      patchedRenderBlocks.partialRenderBounds = renderer.partialRenderBounds
-      patchedRenderBlocks.uvRotateEast = renderer.uvRotateEast
-      patchedRenderBlocks.uvRotateWest = renderer.uvRotateWest
-      patchedRenderBlocks.uvRotateSouth = renderer.uvRotateSouth
-      patchedRenderBlocks.uvRotateNorth = renderer.uvRotateNorth
-      patchedRenderBlocks.uvRotateTop = renderer.uvRotateTop
-      patchedRenderBlocks.uvRotateBottom = renderer.uvRotateBottom
-      patchedRenderBlocks
+      val patched = patchedRenderBlocksThreadLocal.get()
+      patched.blockAccess = renderer.blockAccess
+      patched.overrideBlockTexture = renderer.overrideBlockTexture
+      patched.flipTexture = renderer.flipTexture
+      patched.renderAllFaces = renderer.renderAllFaces
+      patched.useInventoryTint = renderer.useInventoryTint
+      patched.renderFromInside = renderer.renderFromInside
+      patched.renderMinX = renderer.renderMinX
+      patched.renderMaxX = renderer.renderMaxX
+      patched.renderMinY = renderer.renderMinY
+      patched.renderMaxY = renderer.renderMaxY
+      patched.renderMinZ = renderer.renderMinZ
+      patched.renderMaxZ = renderer.renderMaxZ
+      patched.lockBlockBounds = renderer.lockBlockBounds
+      patched.partialRenderBounds = renderer.partialRenderBounds
+      patched
     }
     else renderer
 
