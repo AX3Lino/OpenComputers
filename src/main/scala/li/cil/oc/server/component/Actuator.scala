@@ -34,6 +34,7 @@ import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.InventoryUtils
 import li.cil.oc.util.ResultWrapper._
+import net.minecraft.init.Blocks
 import net.minecraft.item.ItemStack
 
 import scala.collection.convert.WrapAsJava._
@@ -81,12 +82,28 @@ object Actuator {
     @Callback(doc = """function():boolean -- Get whether the device is actively connected to an ME network (powered and got a channel).""")
     def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
 
-    @Callback(doc = """function([slot:number]):table -- Get the max stack size of the given slot in the inventory on the facing side, or of every slot (1-indexed) if none given - #result then gives the slot count.""")
-    def getInventoryCapacity(context: Context, args: Arguments): Array[AnyRef] = {
+    // Same names/split as traits.WorldInventoryAnalytics' getInventorySize(side)/getSlotMaxStackSize(side, slot)
+    // (used by Transposer and others), just without the side argument - Actuator only has one facing side.
+
+    @Callback(doc = """function():number -- Get the number of slots in the inventory on the facing side.""")
+    def getInventorySize(context: Context, args: Arguments): Array[AnyRef] = {
       val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
-      def maxStackSizeOf(slot: Int) = Option(inventory.getStackInSlot(slot)).fold(0)(_.getMaxStackSize)
-      if (args.count() > 0) result(maxStackSizeOf(args.checkSlot(inventory, 0)))
-      else result((0 until inventory.getSizeInventory).map(i => maxStackSizeOf(i).underlying: AnyRef).toArray)
+      result(inventory.getSizeInventory)
+    }
+
+    @Callback(doc = """function(slot:number):number -- Get the maximum number of items in the specified slot of the inventory on the facing side.""")
+    def getSlotMaxStackSize(context: Context, args: Arguments): Array[AnyRef] = {
+      val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
+      val slot = args.checkSlot(inventory, 0)
+      // An empty slot doesn't know what item it'll hold, so fall back to the inventory's own generic
+      // limit (same cap vanilla insertion itself uses) instead of reporting 0 capacity for it. Per-slot
+      // item-type restrictions (e.g. a circuit-only slot, or a fluid hatch's item-less "slots") aren't
+      // queryable without a candidate stack, so this is a best-effort number, not a guaranteed-accurate one.
+      val capacity = Option(inventory.getStackInSlot(slot)) match {
+        case Some(stack) => math.min(stack.getMaxStackSize, inventory.getInventoryStackLimit)
+        case None => inventory.getInventoryStackLimit
+      }
+      result(capacity)
     }
 
     @Callback(doc = """function([slot:number]):table -- Get a description of the stack in the given slot of the inventory on the facing side, or of every slot (1-indexed) if none given.""")
@@ -101,35 +118,58 @@ object Actuator {
     }
 
     // ----------------------------------------------------------------------- //
-    // GregTech circuit configuration (programmed circuit slot) of whatever's on the facing side.
+    // Further info about whatever's on the facing side: one scan-style call (geolyzer.analyze()
+    // idiom) instead of a chainable handle object, since it's just a snapshot, nothing to hold onto.
 
-    private def circuitConfigurableMachine: Option[IMetaTileEntity with IConfigurationCircuitSupport] =
+    private def gtTileEntity(): Option[BaseMetaTileEntity] =
       if (!Mods.GregTech.isAvailable) None
-      else {
-        val pos = facingPos
-        host.world.getTileEntity(pos.x, pos.y, pos.z) match {
-          case mte: BaseMetaTileEntity => mte.getMetaTileEntity match {
-            case ccs: IMetaTileEntity with IConfigurationCircuitSupport => Some(ccs)
-            case _ => None
+      else host.world.getTileEntity(facingPos.x, facingPos.y, facingPos.z) match {
+        case mte: BaseMetaTileEntity => Some(mte)
+        case _ => None
+      }
+
+    private def gtMachine(): Option[IMetaTileEntity] = gtTileEntity().map(_.getMetaTileEntity)
+
+    private def circuitConfigurableMachine(): Option[IMetaTileEntity with IConfigurationCircuitSupport] =
+      gtMachine().collect { case ccs: IMetaTileEntity with IConfigurationCircuitSupport => ccs }
+
+    @Callback(doc = """function():table -- Scan whatever's on the facing side: name, and for GregTech machines also activity/progress and circuit configuration if applicable.""")
+    def scanMachine(context: Context, args: Arguments): Array[AnyRef] = {
+      val pos = facingPos
+      val block = host.world.getBlock(pos.x, pos.y, pos.z)
+      if (block == Blocks.air) return result(Unit, "no block")
+
+      val info = new util.HashMap[String, AnyRef]()
+      info.put("name", gtMachine() match {
+        case Some(mte) => mte.getLocalName
+        case None => new ItemStack(block, 1, host.world.getBlockMetadata(pos.x, pos.y, pos.z)).getDisplayName
+      })
+
+      gtTileEntity().foreach { gte =>
+        info.put("isActive", Boolean.box(gte.isActive))
+        info.put("isWorkAllowed", Boolean.box(gte.isAllowedToWork))
+        info.put("progress", Int.box(gte.getProgress))
+        info.put("maxProgress", Int.box(gte.getMaxProgress))
+      }
+
+      circuitConfigurableMachine().foreach { mte =>
+        val slot = mte.getCircuitSlot
+        if (slot >= 0 && slot < mte.getSizeInventory) {
+          val config = mte.getStackInSlot(slot) match {
+            case stack: ItemStack if stack.getItem.isInstanceOf[ItemIntegratedCircuit] => stack.getItemDamage
+            case _ => -1
           }
-          case _ => None
+          info.put("circuitConfiguration", Int.box(config))
         }
       }
 
-    @Callback(doc = """function():number -- Get the circuit configuration of the machine on the facing side. Returns -1 if none, or if not applicable.""")
-    def getCircuitConfiguration(context: Context, args: Arguments): Array[AnyRef] = {
-      val mte = circuitConfigurableMachine.getOrElse(return result(Unit, "machine does not support circuit configuration"))
-      val slot = mte.getCircuitSlot
-      if (slot < 0 || slot >= mte.getSizeInventory) return result(Unit, "invalid circuit slot")
-      mte.getStackInSlot(slot) match {
-        case stack: ItemStack if stack.getItem.isInstanceOf[ItemIntegratedCircuit] => result(stack.getItemDamage)
-        case _ => result(-1)
-      }
+      result(info)
     }
 
-    @Callback(doc = """function(config:number):boolean -- Set the circuit configuration of the machine on the facing side. Use -1 to remove the circuit.""")
+    // Doesn't fit scanMachine()'s read-only shape, but the ghost circuit needs a way to be set.
+    @Callback(doc = """function(config:number):boolean -- Set the circuit configuration of the GregTech machine on the facing side. Use -1 to remove the circuit.""")
     def setCircuitConfiguration(context: Context, args: Arguments): Array[AnyRef] = {
-      val mte = circuitConfigurableMachine.getOrElse(return result(Unit, "machine does not support circuit configuration"))
+      val mte = circuitConfigurableMachine().getOrElse(return result(Unit, "machine does not support circuit configuration"))
       val slot = mte.getCircuitSlot
       if (slot < 0 || slot >= mte.getSizeInventory) return result(Unit, "invalid circuit slot")
 

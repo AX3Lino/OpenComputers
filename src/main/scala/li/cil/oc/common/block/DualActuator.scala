@@ -4,6 +4,7 @@ import li.cil.oc.common.tileentity
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemStack
 import net.minecraft.world.World
+import net.minecraftforge.common.util.ForgeDirection
 
 class DualActuator extends Actuator {
   override protected def customTextures = Array(
@@ -15,7 +16,11 @@ class DualActuator extends Actuator {
     Some("DualActuatorSide")
   )
 
-  override def createTileEntity(world: World, metadata: Int) = new tileentity.DualActuator()
+  override def createTileEntity(world: World, metadata: Int) = {
+    val actuator = new tileentity.DualActuator()
+    actuator.setFromFacing(ForgeDirection.getOrientation(metadata).getOpposite)
+    actuator
+  }
 
   override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit =
     tooltipBodyWithOwnDescription(stack, tooltip)

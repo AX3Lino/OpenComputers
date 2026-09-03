@@ -60,6 +60,45 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         Transposer.render(block, metadata, renderer)
         tessellator.draw()
 
+      case _: common.block.Actuator =>
+        // Held/inventory render has no tile entity to read facing from (unlike renderWorldBlock's
+        // Actuator case below), so compensate uv rotation using the block's own default unrotated
+        // orientation (SOUTH = front - see common.block.Actuator's customTextures comment) instead of
+        // an actual facing. Without this the top/bottom faces show vanilla's uncompensated Y+/Y- UV
+        // mapping, which is what "top not at the top" in hand actually was.
+        block match {
+          case simple: common.block.SimpleBlock =>
+            simple.setBlockBoundsForItemRender(metadata)
+            simple.preItemRender(metadata)
+          case _ => block.setBlockBoundsForItemRender()
+        }
+        renderer.setRenderBoundsFromBlock(block)
+        GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
+
+        val forward = ForgeDirection.SOUTH
+        renderer.uvRotateBottom = FaceOrientation.get(ForgeDirection.DOWN, forward)
+        renderer.uvRotateTop = FaceOrientation.get(ForgeDirection.UP, forward)
+        renderer.uvRotateEast = FaceOrientation.get(ForgeDirection.NORTH, forward)
+        renderer.uvRotateWest = FaceOrientation.get(ForgeDirection.SOUTH, forward)
+        renderer.uvRotateNorth = FaceOrientation.get(ForgeDirection.WEST, forward)
+        renderer.uvRotateSouth = FaceOrientation.get(ForgeDirection.EAST, forward)
+
+        tessellator.startDrawingQuads()
+        renderFaceYNeg(block, metadata, renderer)
+        renderFaceYPos(block, metadata, renderer)
+        renderFaceZNeg(block, metadata, renderer)
+        renderFaceZPos(block, metadata, renderer)
+        renderFaceXNeg(block, metadata, renderer)
+        renderFaceXPos(block, metadata, renderer)
+        tessellator.draw()
+
+        renderer.uvRotateBottom = 0
+        renderer.uvRotateTop = 0
+        renderer.uvRotateNorth = 0
+        renderer.uvRotateSouth = 0
+        renderer.uvRotateWest = 0
+        renderer.uvRotateEast = 0
+
       case _ =>
         block match {
           case simple: common.block.SimpleBlock =>
