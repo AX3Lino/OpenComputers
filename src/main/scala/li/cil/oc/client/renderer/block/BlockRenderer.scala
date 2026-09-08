@@ -200,31 +200,31 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
   val patchedRenderBlocksThreadLocal = new ThreadLocal[PatchedRenderBlocks]() {
     override def initialValue = new PatchedRenderBlocks()
   }
-
-  private def copyState(renderer: RenderBlocks, patched: RenderBlocks): RenderBlocks = {
-    patched.blockAccess = renderer.blockAccess
-    patched.overrideBlockTexture = renderer.overrideBlockTexture
-    patched.flipTexture = renderer.flipTexture
-    patched.renderAllFaces = renderer.renderAllFaces
-    patched.useInventoryTint = renderer.useInventoryTint
-    patched.renderFromInside = renderer.renderFromInside
-    patched.renderMinX = renderer.renderMinX
-    patched.renderMaxX = renderer.renderMaxX
-    patched.renderMinY = renderer.renderMinY
-    patched.renderMaxY = renderer.renderMaxY
-    patched.renderMinZ = renderer.renderMinZ
-    patched.renderMaxZ = renderer.renderMaxZ
-    patched.lockBlockBounds = renderer.lockBlockBounds
-    patched.partialRenderBounds = renderer.partialRenderBounds
-    patched
-  }
-
   // The texture flip this works around only seems to occur for blocks with custom block renderers?
-  // Doesn't cover Actuator/DualActuator's Down-face mirroring - see ActuatorOrientation/FlippableIcon
-  // instead, which mirrors at the icon level.
   def patchedRenderer(renderer: RenderBlocks, block: Block) =
     if (needsFlipping(block)) {
-      copyState(renderer, patchedRenderBlocksThreadLocal.get())
+      val patchedRenderBlocks = patchedRenderBlocksThreadLocal.get()
+      patchedRenderBlocks.blockAccess = renderer.blockAccess
+      patchedRenderBlocks.overrideBlockTexture = renderer.overrideBlockTexture
+      patchedRenderBlocks.flipTexture = renderer.flipTexture
+      patchedRenderBlocks.renderAllFaces = renderer.renderAllFaces
+      patchedRenderBlocks.useInventoryTint = renderer.useInventoryTint
+      patchedRenderBlocks.renderFromInside = renderer.renderFromInside
+      patchedRenderBlocks.renderMinX = renderer.renderMinX
+      patchedRenderBlocks.renderMaxX = renderer.renderMaxX
+      patchedRenderBlocks.renderMinY = renderer.renderMinY
+      patchedRenderBlocks.renderMaxY = renderer.renderMaxY
+      patchedRenderBlocks.renderMinZ = renderer.renderMinZ
+      patchedRenderBlocks.renderMaxZ = renderer.renderMaxZ
+      patchedRenderBlocks.lockBlockBounds = renderer.lockBlockBounds
+      patchedRenderBlocks.partialRenderBounds = renderer.partialRenderBounds
+      patchedRenderBlocks.uvRotateEast = renderer.uvRotateEast
+      patchedRenderBlocks.uvRotateWest = renderer.uvRotateWest
+      patchedRenderBlocks.uvRotateSouth = renderer.uvRotateSouth
+      patchedRenderBlocks.uvRotateNorth = renderer.uvRotateNorth
+      patchedRenderBlocks.uvRotateTop = renderer.uvRotateTop
+      patchedRenderBlocks.uvRotateBottom = renderer.uvRotateBottom
+      patchedRenderBlocks
     }
     else renderer
 

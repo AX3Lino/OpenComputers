@@ -4,7 +4,7 @@ import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import li.cil.oc.Settings
 import li.cil.oc.client.Textures
-import li.cil.oc.client.renderer.block.FlippableIcon
+import appeng.client.texture.TmpFlippableIcon
 import li.cil.oc.client.renderer.block.ActuatorOrientation
 import li.cil.oc.common.tileentity
 import net.minecraft.client.renderer.texture.IIconRegister
@@ -30,7 +30,7 @@ class Actuator extends SimpleBlock {
 
   // One wrapper per world direction, not per local texture slot - the same icon can land on
   // different world faces depending on facing, each needing its own flip state.
-  private val globalIconWrappers = Array.fill(6)(new FlippableIcon(null))
+  private val globalIconWrappers = Array.fill(6)(new TmpFlippableIcon())
 
   @SideOnly(Side.CLIENT)
   override def registerBlockIcons(iconRegister: IIconRegister): Unit = {
@@ -47,7 +47,8 @@ class Actuator extends SimpleBlock {
     val facing = getFacing(world, x, y, z)
     if (facing == ForgeDirection.UNKNOWN || globalSide == facing || globalSide == facing.getOpposite) icon
     else {
-      val wrapper = globalIconWrappers(globalSide.ordinal).wrap(icon)
+      val wrapper = globalIconWrappers(globalSide.ordinal)
+      wrapper.setOriginal(icon)
       wrapper.setFlip(ActuatorOrientation.get(facing, globalSide))
       wrapper
     }
@@ -59,7 +60,8 @@ class Actuator extends SimpleBlock {
     val icon = super.getIcon(side, metadata)
     if (side == ForgeDirection.SOUTH || side == ForgeDirection.NORTH) icon
     else {
-      val wrapper = globalIconWrappers(side.ordinal).wrap(icon)
+      val wrapper = globalIconWrappers(side.ordinal)
+      wrapper.setOriginal(icon)
       wrapper.setFlip(ActuatorOrientation.get(ForgeDirection.SOUTH, side))
       wrapper
     }
