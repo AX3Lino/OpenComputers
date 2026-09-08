@@ -61,10 +61,8 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         tessellator.draw()
 
       case _: common.block.Actuator =>
-        // Held/inventory render has no tile entity/real facing - use the fixed default (SOUTH),
-        // matching common.block.Actuator's own getIcon(side, metadata) override for the icon-flip
-        // half of this. uvRotate handles the rotation half; ActuatorOrientation.get packs both, see
-        // that object's comment for where the values come from (ported from AE2's ME Interface).
+        // No tile entity here, so use the fixed default facing (SOUTH), same as
+        // common.block.Actuator's own getIcon(side, metadata) override.
         block match {
           case simple: common.block.SimpleBlock =>
             simple.setBlockBoundsForItemRender(metadata)
@@ -110,18 +108,24 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
 
   }
 
-  // RenderBlocks' own uvRotateXXX fields are, confusingly, NOT named after the face they affect for
-  // the four lateral faces (confirmed directly in its source): renderFaceZNeg (NORTH) reads
-  // uvRotateEast, renderFaceZPos (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST) reads
-  // uvRotateNorth, renderFaceXPos (EAST) reads uvRotateSouth. Only uvRotateTop/Bottom match their
-  // face (UP/DOWN). The assignment below is intentionally crossed to match reality, not the names.
+  // Only the 4 lateral faces need the arrow-rotation table - Front/Back always show their own
+  // texture right-side up, toLocal already puts the correct one on the correct face.
+  //
+  // RenderBlocks' uvRotateXXX fields are, confusingly, not named after the face they affect for the
+  // lateral faces (confirmed in source): renderFaceZNeg (NORTH) reads uvRotateEast, renderFaceZPos
+  // (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST) reads uvRotateNorth, renderFaceXPos (EAST)
+  // reads uvRotateSouth. Only uvRotateTop/Bottom match their face. Crossed below to match reality.
   private def setActuatorUvRotate(renderer: RenderBlocks, forward: ForgeDirection): Unit = {
-    renderer.uvRotateBottom = ActuatorOrientation.get(forward, ForgeDirection.DOWN) & 7
-    renderer.uvRotateTop = ActuatorOrientation.get(forward, ForgeDirection.UP) & 7
-    renderer.uvRotateEast = ActuatorOrientation.get(forward, ForgeDirection.NORTH) & 7
-    renderer.uvRotateWest = ActuatorOrientation.get(forward, ForgeDirection.SOUTH) & 7
-    renderer.uvRotateNorth = ActuatorOrientation.get(forward, ForgeDirection.WEST) & 7
-    renderer.uvRotateSouth = ActuatorOrientation.get(forward, ForgeDirection.EAST) & 7
+    def rotate(face: ForgeDirection) =
+      if (face == forward || face == forward.getOpposite) 0
+      else ActuatorOrientation.get(forward, face) & 7
+
+    renderer.uvRotateBottom = rotate(ForgeDirection.DOWN)
+    renderer.uvRotateTop = rotate(ForgeDirection.UP)
+    renderer.uvRotateEast = rotate(ForgeDirection.NORTH)
+    renderer.uvRotateWest = rotate(ForgeDirection.SOUTH)
+    renderer.uvRotateNorth = rotate(ForgeDirection.WEST)
+    renderer.uvRotateSouth = rotate(ForgeDirection.EAST)
   }
 
   private def clearUvRotate(renderer: RenderBlocks): Unit = {
@@ -216,10 +220,8 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
   }
 
   // The texture flip this works around only seems to occur for blocks with custom block renderers?
-  // NOTE: this cannot fix Actuator/DualActuator's Down-face mirroring - vanilla's renderFaceYNeg has
-  // no flipTexture/uvRotate escape hatch capable of undoing a true mirror (confirmed against
-  // RenderBlocks' own source); that's handled with a pre-mirrored texture file instead, at the
-  // customTextures level in common/block/Actuator.scala, not here.
+  // Doesn't cover Actuator/DualActuator's Down-face mirroring - see ActuatorOrientation/FlippableIcon
+  // instead, which mirrors at the icon level.
   def patchedRenderer(renderer: RenderBlocks, block: Block) =
     if (needsFlipping(block)) {
       copyState(renderer, patchedRenderBlocksThreadLocal.get())
