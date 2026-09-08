@@ -61,11 +61,10 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         tessellator.draw()
 
       case _: common.block.Actuator =>
-        // Held/inventory render has no tile entity to read facing from (unlike renderWorldBlock's
-        // Actuator case below), so compensate uv rotation using the block's own default unrotated
-        // orientation (SOUTH = front - see common.block.Actuator's customTextures comment) instead of
-        // an actual facing. Without this the top/bottom faces show vanilla's uncompensated Y+/Y- UV
-        // mapping, which is what "top not at the top" in hand actually was.
+        // Held/inventory render has no tile entity/real facing - use the fixed default (SOUTH),
+        // matching common.block.Actuator's own getIcon(side, metadata) override for the icon-flip
+        // half of this. uvRotate handles the rotation half; ActuatorOrientation.get packs both, see
+        // that object's comment for where the values come from (ported from AE2's ME Interface).
         block match {
           case simple: common.block.SimpleBlock =>
             simple.setBlockBoundsForItemRender(metadata)
@@ -75,13 +74,7 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         renderer.setRenderBoundsFromBlock(block)
         GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
 
-        val forward = ForgeDirection.SOUTH
-        renderer.uvRotateBottom = FaceOrientation.get(ForgeDirection.DOWN, forward)
-        renderer.uvRotateTop = FaceOrientation.get(ForgeDirection.UP, forward)
-        renderer.uvRotateEast = FaceOrientation.get(ForgeDirection.NORTH, forward)
-        renderer.uvRotateWest = FaceOrientation.get(ForgeDirection.SOUTH, forward)
-        renderer.uvRotateNorth = FaceOrientation.get(ForgeDirection.WEST, forward)
-        renderer.uvRotateSouth = FaceOrientation.get(ForgeDirection.EAST, forward)
+        setActuatorUvRotate(renderer, ForgeDirection.SOUTH)
 
         tessellator.startDrawingQuads()
         renderFaceYNeg(block, metadata, renderer)
@@ -92,12 +85,7 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         renderFaceXPos(block, metadata, renderer)
         tessellator.draw()
 
-        renderer.uvRotateBottom = 0
-        renderer.uvRotateTop = 0
-        renderer.uvRotateNorth = 0
-        renderer.uvRotateSouth = 0
-        renderer.uvRotateWest = 0
-        renderer.uvRotateEast = 0
+        clearUvRotate(renderer)
 
       case _ =>
         block match {
@@ -120,6 +108,29 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
     }
     GL11.glPopMatrix()
 
+  }
+
+  // RenderBlocks' own uvRotateXXX fields are, confusingly, NOT named after the face they affect for
+  // the four lateral faces (confirmed directly in its source): renderFaceZNeg (NORTH) reads
+  // uvRotateEast, renderFaceZPos (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST) reads
+  // uvRotateNorth, renderFaceXPos (EAST) reads uvRotateSouth. Only uvRotateTop/Bottom match their
+  // face (UP/DOWN). The assignment below is intentionally crossed to match reality, not the names.
+  private def setActuatorUvRotate(renderer: RenderBlocks, forward: ForgeDirection): Unit = {
+    renderer.uvRotateBottom = ActuatorOrientation.get(forward, ForgeDirection.DOWN) & 7
+    renderer.uvRotateTop = ActuatorOrientation.get(forward, ForgeDirection.UP) & 7
+    renderer.uvRotateEast = ActuatorOrientation.get(forward, ForgeDirection.NORTH) & 7
+    renderer.uvRotateWest = ActuatorOrientation.get(forward, ForgeDirection.SOUTH) & 7
+    renderer.uvRotateNorth = ActuatorOrientation.get(forward, ForgeDirection.WEST) & 7
+    renderer.uvRotateSouth = ActuatorOrientation.get(forward, ForgeDirection.EAST) & 7
+  }
+
+  private def clearUvRotate(renderer: RenderBlocks): Unit = {
+    renderer.uvRotateBottom = 0
+    renderer.uvRotateTop = 0
+    renderer.uvRotateNorth = 0
+    renderer.uvRotateSouth = 0
+    renderer.uvRotateWest = 0
+    renderer.uvRotateEast = 0
   }
 
   override def renderWorldBlock(world: IBlockAccess, x: Int, y: Int, z: Int, block: Block, modelId: Int, realRenderer: RenderBlocks) = {
@@ -163,31 +174,9 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
 
         true
       case actuator: common.tileentity.Actuator =>
-        // Rotates the Side texture's arrow to point toward the actuator's facing on every face, not
-        // just the one it's actually facing - see FaceOrientation for the (empirically-derived) values.
-        //
-        // RenderBlocks' own uvRotateXXX fields are, confusingly, NOT named after the face they affect
-        // for the four lateral faces (confirmed directly in its source): renderFaceZNeg (the NORTH
-        // face) reads uvRotateEast, renderFaceZPos (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST)
-        // reads uvRotateNorth, and renderFaceXPos (EAST) reads uvRotateSouth. Only uvRotateTop/Bottom
-        // actually match their face (UP/DOWN). So the assignment below is intentionally crossed to
-        // match reality, not the field names.
-        val forward = actuator.facing
-        renderer.uvRotateBottom = FaceOrientation.get(ForgeDirection.DOWN, forward)
-        renderer.uvRotateTop = FaceOrientation.get(ForgeDirection.UP, forward)
-        renderer.uvRotateEast = FaceOrientation.get(ForgeDirection.NORTH, forward)
-        renderer.uvRotateWest = FaceOrientation.get(ForgeDirection.SOUTH, forward)
-        renderer.uvRotateNorth = FaceOrientation.get(ForgeDirection.WEST, forward)
-        renderer.uvRotateSouth = FaceOrientation.get(ForgeDirection.EAST, forward)
-
+        setActuatorUvRotate(renderer, actuator.facing)
         val result = renderer.renderStandardBlock(block, x, y, z)
-
-        renderer.uvRotateBottom = 0
-        renderer.uvRotateTop = 0
-        renderer.uvRotateNorth = 0
-        renderer.uvRotateSouth = 0
-        renderer.uvRotateWest = 0
-        renderer.uvRotateEast = 0
+        clearUvRotate(renderer)
 
         result
       case _ =>
@@ -208,25 +197,32 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
     override def initialValue = new PatchedRenderBlocks()
   }
 
+  private def copyState(renderer: RenderBlocks, patched: RenderBlocks): RenderBlocks = {
+    patched.blockAccess = renderer.blockAccess
+    patched.overrideBlockTexture = renderer.overrideBlockTexture
+    patched.flipTexture = renderer.flipTexture
+    patched.renderAllFaces = renderer.renderAllFaces
+    patched.useInventoryTint = renderer.useInventoryTint
+    patched.renderFromInside = renderer.renderFromInside
+    patched.renderMinX = renderer.renderMinX
+    patched.renderMaxX = renderer.renderMaxX
+    patched.renderMinY = renderer.renderMinY
+    patched.renderMaxY = renderer.renderMaxY
+    patched.renderMinZ = renderer.renderMinZ
+    patched.renderMaxZ = renderer.renderMaxZ
+    patched.lockBlockBounds = renderer.lockBlockBounds
+    patched.partialRenderBounds = renderer.partialRenderBounds
+    patched
+  }
+
   // The texture flip this works around only seems to occur for blocks with custom block renderers?
+  // NOTE: this cannot fix Actuator/DualActuator's Down-face mirroring - vanilla's renderFaceYNeg has
+  // no flipTexture/uvRotate escape hatch capable of undoing a true mirror (confirmed against
+  // RenderBlocks' own source); that's handled with a pre-mirrored texture file instead, at the
+  // customTextures level in common/block/Actuator.scala, not here.
   def patchedRenderer(renderer: RenderBlocks, block: Block) =
     if (needsFlipping(block)) {
-      val patched = patchedRenderBlocksThreadLocal.get()
-      patched.blockAccess = renderer.blockAccess
-      patched.overrideBlockTexture = renderer.overrideBlockTexture
-      patched.flipTexture = renderer.flipTexture
-      patched.renderAllFaces = renderer.renderAllFaces
-      patched.useInventoryTint = renderer.useInventoryTint
-      patched.renderFromInside = renderer.renderFromInside
-      patched.renderMinX = renderer.renderMinX
-      patched.renderMaxX = renderer.renderMaxX
-      patched.renderMinY = renderer.renderMinY
-      patched.renderMaxY = renderer.renderMaxY
-      patched.renderMinZ = renderer.renderMinZ
-      patched.renderMaxZ = renderer.renderMaxZ
-      patched.lockBlockBounds = renderer.lockBlockBounds
-      patched.partialRenderBounds = renderer.partialRenderBounds
-      patched
+      copyState(renderer, patchedRenderBlocksThreadLocal.get())
     }
     else renderer
 

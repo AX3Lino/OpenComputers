@@ -95,15 +95,7 @@ object Actuator {
     def getSlotMaxStackSize(context: Context, args: Arguments): Array[AnyRef] = {
       val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
       val slot = args.checkSlot(inventory, 0)
-      // An empty slot doesn't know what item it'll hold, so fall back to the inventory's own generic
-      // limit (same cap vanilla insertion itself uses) instead of reporting 0 capacity for it. Per-slot
-      // item-type restrictions (e.g. a circuit-only slot, or a fluid hatch's item-less "slots") aren't
-      // queryable without a candidate stack, so this is a best-effort number, not a guaranteed-accurate one.
-      val capacity = Option(inventory.getStackInSlot(slot)) match {
-        case Some(stack) => math.min(stack.getMaxStackSize, inventory.getInventoryStackLimit)
-        case None => inventory.getInventoryStackLimit
-      }
-      result(capacity)
+      result(Option(inventory.getStackInSlot(slot)).fold(0)(_.getMaxStackSize))
     }
 
     @Callback(doc = """function([slot:number]):table -- Get a description of the stack in the given slot of the inventory on the facing side, or of every slot (1-indexed) if none given.""")

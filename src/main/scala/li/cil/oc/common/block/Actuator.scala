@@ -4,11 +4,14 @@ import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import li.cil.oc.Settings
 import li.cil.oc.client.Textures
+import li.cil.oc.client.renderer.block.FlippableIcon
+import li.cil.oc.client.renderer.block.ActuatorOrientation
 import li.cil.oc.common.tileentity
 import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemStack
+import net.minecraft.util.IIcon
 import net.minecraft.world.IBlockAccess
 import net.minecraft.world.World
 import net.minecraftforge.common.util.ForgeDirection
@@ -29,10 +32,41 @@ class Actuator extends SimpleBlock {
     Some("ActuatorSide")
   )
 
+  // One wrapper per WORLD direction, not per local texture slot: the same underlying icon (e.g.
+  // "ActuatorSide", reused at four local indices) can land on different world faces depending on
+  // facing, and each of those faces needs its own independent flip state from ActuatorOrientation.
+  private val globalIconWrappers = Array.fill(6)(new FlippableIcon(null))
+
   @SideOnly(Side.CLIENT)
   override def registerBlockIcons(iconRegister: IIconRegister): Unit = {
     super.registerBlockIcons(iconRegister)
     Textures.Actuator.iconOn = iconRegister.registerIcon(Settings.resourceDomain + ":ActuatorOn")
+  }
+
+  // World-placed block: real facing from the tile entity. See BlockRenderer.scala's Actuator case
+  // for the other half of this (setting renderer.uvRotateXxx from the same ActuatorOrientation
+  // table) - this override only handles the icon-level mirror half, uvRotate can't do that part.
+  @SideOnly(Side.CLIENT)
+  override def getIcon(world: IBlockAccess, x: Int, y: Int, z: Int, globalSide: ForgeDirection, localSide: ForgeDirection): IIcon = {
+    val icon = super.getIcon(world, x, y, z, globalSide, localSide)
+    val facing = getFacing(world, x, y, z)
+    if (facing == ForgeDirection.UNKNOWN) icon
+    else {
+      val wrapper = globalIconWrappers(globalSide.ordinal).wrap(icon)
+      wrapper.setFlip(ActuatorOrientation.get(facing, globalSide))
+      wrapper
+    }
+  }
+
+  // Held/inventory item render has no tile entity/real facing - use the block's own default
+  // unrotated orientation (SOUTH = front, matching customTextures' own convention) for visual
+  // consistency with how a freshly-placed, unrotated block looks.
+  @SideOnly(Side.CLIENT)
+  override def getIcon(side: ForgeDirection, metadata: Int): IIcon = {
+    val icon = super.getIcon(side, metadata)
+    val wrapper = globalIconWrappers(side.ordinal).wrap(icon)
+    wrapper.setFlip(ActuatorOrientation.get(ForgeDirection.SOUTH, side))
+    wrapper
   }
 
   override def hasTileEntity(metadata: Int) = true
