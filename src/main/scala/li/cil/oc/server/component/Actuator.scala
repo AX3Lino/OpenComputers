@@ -14,6 +14,7 @@ import appeng.util.Platform
 import gregtech.api.interfaces.IConfigurationCircuitSupport
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity
 import gregtech.api.metatileentity.BaseMetaTileEntity
+import gregtech.api.metatileentity.implementations.MTEMultiBlockBase
 import gregtech.api.util.GTUtility
 import gregtech.common.items.ItemIntegratedCircuit
 import li.cil.oc.Constants
@@ -125,23 +126,47 @@ object Actuator {
     private def circuitConfigurableMachine(): Option[IMetaTileEntity with IConfigurationCircuitSupport] =
       gtMachine().collect { case ccs: IMetaTileEntity with IConfigurationCircuitSupport => ccs }
 
-    @Callback(doc = """function():table -- Scan whatever's on the facing side: name, and for GregTech machines also activity/progress and circuit configuration if applicable.""")
+    @Callback(doc = """function():table -- Scan whatever's on the facing side: name, position, and for GregTech machines also its meta tile ID, energy/activity/progress, circuit configuration, and (multiblocks only) efficiency/pollution/maintenance/owner/runtime if applicable.""")
     def scanMachine(context: Context, args: Arguments): Array[AnyRef] = {
       val pos = facingPos
       val block = host.world.getBlock(pos.x, pos.y, pos.z)
       if (block == Blocks.air) return result(Unit, "no block")
+      val metadata = host.world.getBlockMetadata(pos.x, pos.y, pos.z)
 
       val info = new util.HashMap[String, AnyRef]()
       info.put("name", gtMachine() match {
         case Some(mte) => mte.getLocalName
-        case None => new ItemStack(block, 1, host.world.getBlockMetadata(pos.x, pos.y, pos.z)).getDisplayName
+        case None => new ItemStack(block, 1, metadata).getDisplayName
       })
+      info.put("x", Int.box(pos.x))
+      info.put("y", Int.box(pos.y))
+      info.put("z", Int.box(pos.z))
+      info.put("metadata", Int.box(metadata))
 
       gtTileEntity().foreach { gte =>
+        info.put("metaTileId", Int.box(gte.getMetaTileID))
+        info.put("owner", gte.getOwnerName)
         info.put("isActive", Boolean.box(gte.isActive))
         info.put("isWorkAllowed", Boolean.box(gte.isAllowedToWork))
         info.put("progress", Int.box(gte.getProgress))
         info.put("maxProgress", Int.box(gte.getMaxProgress))
+        info.put("energyStored", Long.box(gte.getStoredEU))
+        info.put("energyCapacity", Long.box(gte.getEUCapacity))
+      }
+
+      // Multiblock-only concepts (pollution, maintenance, parallel efficiency, recipe count, total
+      // runtime) - same fields GregTech's own portable scanner (getInfoData) reports, mirrored here
+      // so a computer sees the same numbers a player would get from scanning the machine directly.
+      gtMachine().foreach {
+        case mte: MTEMultiBlockBase =>
+          info.put("energyUsage", Int.box(mte.mEUt))
+          info.put("maxInputVoltage", Long.box(mte.getMaxInputVoltage))
+          info.put("efficiency", Double.box(mte.mEfficiency / 100.0))
+          info.put("problems", Int.box(mte.getIdealStatus - mte.getRepairStatus))
+          info.put("pollution", Int.box(mte.getAveragePollutionPercentage))
+          info.put("recipesDone", Long.box(mte.recipesDone))
+          info.put("totalRunTime", Long.box(mte.getTotalRuntimeInTicks))
+        case _ =>
       }
 
       circuitConfigurableMachine().foreach { mte =>
