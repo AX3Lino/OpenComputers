@@ -24,7 +24,6 @@ import net.minecraftforge.fluids.FluidStack
 import net.minecraftforge.fluids.FluidTankInfo
 
 import scala.collection.convert.WrapAsJava._
-import scala.collection.convert.WrapAsScala._
 
 // A DualActuator adds fluid import/export on top of Actuator's item capability, same facing side.
 object DualActuator {
@@ -46,32 +45,12 @@ object DualActuator {
 
     // ----------------------------------------------------------------------- //
 
-    @Callback(doc = """function([filter:table]):table -- Get a list of the stored fluids in this device's own ME network.""")
-    def getFluidsInNetwork(context: Context, args: Arguments): Array[AnyRef] = {
-      val p = proxy.getOrElse(return result(Unit, "no ME network"))
-      if (!p.isActive) return result(Unit, "no ME network")
-      val filter = networkFilter(args, 0)
-      result(p.getStorage.getFluidInventory.getStorageList.view.map(convert).filter(matches(_, filter)).toArray)
-    }
-
-    // Tank arguments are 1-indexed, same as item slots - checkTank/optTank below convert to the
-    // 0-indexed array position Forge's own FluidTankInfo[]/IFluidHandler API uses internally.
-
-    protected def checkTank(args: Arguments, index: Int, tankCount: Int): Int = {
-      val tank = args.checkInteger(index)
-      if (tank < 1 || tank > tankCount) throw new IllegalArgumentException("invalid tank index")
-      tank - 1
-    }
-
-    protected def optTank(args: Arguments, index: Int, tankCount: Int, default: Int): Int =
-      if (args.count() > index) checkTank(args, index, tankCount) else default
-
     @Callback(doc = """function([tank:number]):table -- Get the capacity of the given tank (1-indexed) on the facing side, or of every tank if none given - #result then gives the tank count.""")
     def getTankCapacity(context: Context, args: Arguments): Array[AnyRef] = {
       val handler = FluidUtils.fluidHandlerAt(facingPos).getOrElse(return result(Unit, "no tank"))
       val info = handler.getTankInfo(facingSide.getOpposite)
       if (info == null) return result(Unit, "no tank")
-      if (args.count() > 0) result(info(checkTank(args, 0, info.length)).capacity)
+      if (args.count() > 0) result(args.checkTankInfo(handler, facingSide.getOpposite, 0).capacity)
       else result(info.map(_.capacity.underlying: AnyRef))
     }
 
@@ -80,7 +59,7 @@ object DualActuator {
       val handler = FluidUtils.fluidHandlerAt(facingPos).getOrElse(return result(Unit, "no tank"))
       val info: Array[FluidTankInfo] = handler.getTankInfo(facingSide.getOpposite)
       if (info == null) return result(Unit, "no tank")
-      if (args.count() > 0) result(info(checkTank(args, 0, info.length)))
+      if (args.count() > 0) result(args.checkTankInfo(handler, facingSide.getOpposite, 0))
       else result(info)
     }
 
@@ -114,13 +93,8 @@ object DualActuator {
 
         // Forge's IFluidHandler.fill can't target a specific tank directly - best effort: reject up
         // front if the requested tank already holds a different, incompatible fluid.
-        val info = handler.getTankInfo(facingSide.getOpposite)
-        val tank = optTank(args, 2, if (info == null) 0 else info.length, -1)
-        if (tank >= 0) {
-          if (info == null || tank >= info.length) return result(false, 0)
-          val existing = info(tank).fluid
-          if (existing != null && !existing.isFluidEqual(simulated)) return result(false, 0)
-        }
+        val tank = args.optTankInfo(handler, facingSide.getOpposite, 2, null)
+        if (tank != null && tank.fluid != null && !tank.fluid.isFluidEqual(simulated)) return result(false, 0)
 
         val fits = handler.fill(facingSide.getOpposite, simulated, false)
         if (fits <= 0) return result(false, 0)
@@ -161,13 +135,12 @@ object DualActuator {
         val energy = p.getEnergy
         val source = new MachineSource(actionHost)
 
-        val info = if (args.count() > 1) handler.getTankInfo(drainSide) else null
-        val sourceTank = optTank(args, 1, if (info == null) 0 else info.length, -1)
+        val sourceTank = args.optTankInfo(handler, drainSide, 1, null)
         val simulated =
-          if (sourceTank < 0) handler.drain(drainSide, count, false)
-          else if (info == null || info(sourceTank).fluid == null) null
+          if (sourceTank == null) handler.drain(drainSide, count, false)
+          else if (sourceTank.fluid == null) null
           else {
-            val fluid = info(sourceTank).fluid.copy()
+            val fluid = sourceTank.fluid.copy()
             fluid.amount = count
             handler.drain(drainSide, fluid, false)
           }

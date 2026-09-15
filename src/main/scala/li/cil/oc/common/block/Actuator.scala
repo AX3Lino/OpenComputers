@@ -4,7 +4,7 @@ import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import li.cil.oc.Settings
 import li.cil.oc.client.Textures
-import appeng.client.texture.TmpFlippableIcon
+import li.cil.oc.client.renderer.block.FlippableIcon
 import li.cil.oc.client.renderer.block.ActuatorOrientation
 import li.cil.oc.common.tileentity
 import net.minecraft.client.renderer.texture.IIconRegister
@@ -30,7 +30,7 @@ class Actuator extends SimpleBlock {
 
   // One wrapper per world direction, not per local texture slot - the same icon can land on
   // different world faces depending on facing, each needing its own flip state.
-  private val globalIconWrappers = Array.fill(6)(new TmpFlippableIcon())
+  private lazy val globalIconWrappers = Array.fill(6)(new FlippableIcon(null))
 
   @SideOnly(Side.CLIENT)
   override def registerBlockIcons(iconRegister: IIconRegister): Unit = {
@@ -47,21 +47,19 @@ class Actuator extends SimpleBlock {
     val facing = getFacing(world, x, y, z)
     if (facing == ForgeDirection.UNKNOWN || globalSide == facing || globalSide == facing.getOpposite) icon
     else {
-      val wrapper = globalIconWrappers(globalSide.ordinal)
-      wrapper.setOriginal(icon)
+      val wrapper = globalIconWrappers(globalSide.ordinal).wrap(icon)
       wrapper.setFlip(ActuatorOrientation.get(facing, globalSide))
       wrapper
     }
   }
 
-  // Held/inventory render has no tile entity - use the default unrotated facing (SOUTH).
+  // Held/inventory render has no tile entity - use the default unrotated facing (SOUTH), like every other block.
   @SideOnly(Side.CLIENT)
   override def getIcon(side: ForgeDirection, metadata: Int): IIcon = {
     val icon = super.getIcon(side, metadata)
     if (side == ForgeDirection.SOUTH || side == ForgeDirection.NORTH) icon
     else {
-      val wrapper = globalIconWrappers(side.ordinal)
-      wrapper.setOriginal(icon)
+      val wrapper = globalIconWrappers(side.ordinal).wrap(icon)
       wrapper.setFlip(ActuatorOrientation.get(ForgeDirection.SOUTH, side))
       wrapper
     }
@@ -94,12 +92,4 @@ class Actuator extends SimpleBlock {
       }
     }
   }
-
-  // Shared by the whole Actuator family: skips super.tooltipBody since there's no rate line to compose with anymore.
-  protected def tooltipBodyWithOwnDescription(stack: ItemStack, tooltip: java.util.List[String]): Unit = {
-    tooltip.addAll(li.cil.oc.util.Tooltip.get(getClass.getSimpleName))
-  }
-
-  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit =
-    tooltipBodyWithOwnDescription(stack, tooltip)
 }

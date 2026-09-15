@@ -5,6 +5,9 @@ import java.util
 import appeng.api.implementations.IPowerChannelState
 import appeng.api.networking.GridFlags
 import appeng.api.networking.IGridNode
+import appeng.api.networking.events.MENetworkChannelsChanged
+import appeng.api.networking.events.MENetworkEventSubscribe
+import appeng.api.networking.events.MENetworkPowerStatusChange
 import appeng.api.networking.security.IActionHost
 import appeng.api.util.AECableType
 import appeng.api.util.DimensionalCoord
@@ -24,9 +27,6 @@ import net.minecraftforge.common.util.ForgeDirection
 // Single wrench-rotatable facing side (traits.Rotatable). Also implements IC2's IWrenchable, purely so
 // GT5's wrench (BehaviourWrench/BlockOverlayRenderer) recognizes this as directly-facing-settable and
 // draws its rotation grid + current-facing indicator, the same as it does for hoppers/droppers/etc.
-// AE2's IOrientable was tried first, but its front+up dual-axis model doesn't match a block that only
-// ever has one meaningful direction - GTUtility.determineWrenchingSide's clicked-zone direction should
-// become the new facing directly, not rotate an axis relative to the current one.
 class Actuator extends traits.Environment with traits.Rotatable with IWrenchable with IGridProxyable with IActionHost with IPowerChannelState {
   protected def blockName = Constants.BlockName.Actuator
 
@@ -77,10 +77,19 @@ class Actuator extends traits.Environment with traits.Rotatable with IWrenchable
 
   def setOwner(player: EntityPlayer): Unit = gridProxy.setOwner(player)
 
-  // IPowerChannelState, consumed by the Waila provider in integration.appeng.
-  override def isActive = gridProxy.isActive
+  // IPowerChannelState. The grid node only exists server-side, so the client renders from a synced copy.
+  private var clientActive = false
+  private var clientPowered = false
 
-  override def isPowered = gridProxy.isPowered
+  override def isActive = if (isServer) gridProxy.isActive else clientActive
+
+  override def isPowered = if (isServer) gridProxy.isPowered else clientPowered
+
+  @MENetworkEventSubscribe
+  def onPowerStatusChange(event: MENetworkPowerStatusChange): Unit = world.markBlockForUpdate(x, y, z)
+
+  @MENetworkEventSubscribe
+  def onChannelsChanged(event: MENetworkChannelsChanged): Unit = world.markBlockForUpdate(x, y, z)
 
   // ----------------------------------------------------------------------- //
 
@@ -110,5 +119,17 @@ class Actuator extends traits.Environment with traits.Rotatable with IWrenchable
     super.writeToNBTForServer(nbt)
     gridProxy.writeToNBT(nbt)
     actuator.save(nbt)
+  }
+
+  override def readFromNBTForClient(nbt: NBTTagCompound) {
+    super.readFromNBTForClient(nbt)
+    clientActive = nbt.getBoolean("active")
+    clientPowered = nbt.getBoolean("powered")
+  }
+
+  override def writeToNBTForClient(nbt: NBTTagCompound) {
+    super.writeToNBTForClient(nbt)
+    nbt.setBoolean("active", gridProxy.isActive)
+    nbt.setBoolean("powered", gridProxy.isPowered)
   }
 }

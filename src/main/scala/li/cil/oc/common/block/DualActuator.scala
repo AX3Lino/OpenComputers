@@ -1,8 +1,6 @@
 package li.cil.oc.common.block
 
 import li.cil.oc.common.tileentity
-import net.minecraft.entity.player.EntityPlayer
-import net.minecraft.item.ItemStack
 import net.minecraft.world.World
 import net.minecraftforge.common.util.ForgeDirection
 
@@ -21,7 +19,4 @@ class DualActuator extends Actuator {
     actuator.setFromFacing(ForgeDirection.getOrientation(metadata).getOpposite)
     actuator
   }
-
-  override protected def tooltipBody(metadata: Int, stack: ItemStack, player: EntityPlayer, tooltip: java.util.List[String], advanced: Boolean): Unit =
-    tooltipBodyWithOwnDescription(stack, tooltip)
 }

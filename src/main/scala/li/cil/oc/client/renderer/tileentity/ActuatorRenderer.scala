@@ -10,32 +10,33 @@ import net.minecraft.tileentity.TileEntity
 import net.minecraftforge.common.util.ForgeDirection
 import org.lwjgl.opengl.GL11
 
-// Draws a glow overlay on the single facing side, to indicate the block's active/interfacing face.
+// Draws a glow overlay on the facing side while the block is powered and has an ME channel.
 object ActuatorRenderer extends TileEntitySpecialRenderer {
   override def renderTileEntityAt(tileEntity: TileEntity, x: Double, y: Double, z: Double, f: Float) {
     RenderState.checkError(getClass.getName + ".renderTileEntityAt: entering (aka: wasntme)")
 
     val actuator = tileEntity.asInstanceOf[tileentity.Actuator]
+    if (actuator.isActive) {
+      GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)
 
-    GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)
+      RenderState.disableLighting()
+      RenderState.makeItBlend()
 
-    RenderState.disableLighting()
-    RenderState.makeItBlend()
+      GL11.glPushMatrix()
 
-    GL11.glPushMatrix()
+      GL11.glTranslated(x + 0.5, y + 0.5, z + 0.5)
+      GL11.glScaled(1.0025, -1.0025, 1.0025)
+      GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
 
-    GL11.glTranslated(x + 0.5, y + 0.5, z + 0.5)
-    GL11.glScaled(1.0025, -1.0025, 1.0025)
-    GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
+      bindTexture(TextureMap.locationBlocksTexture)
 
-    bindTexture(TextureMap.locationBlocksTexture)
+      drawFacingFace(actuator.facing, Textures.Actuator.iconOn)
 
-    drawFacingFace(actuator.facing, Textures.Actuator.iconOn)
+      RenderState.enableLighting()
 
-    RenderState.enableLighting()
-
-    GL11.glPopMatrix()
-    GL11.glPopAttrib()
+      GL11.glPopMatrix()
+      GL11.glPopAttrib()
+    }
 
     RenderState.checkError(getClass.getName + ".renderTileEntityAt: leaving")
   }

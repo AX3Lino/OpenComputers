@@ -1,36 +1,55 @@
 package li.cil.oc.client.renderer.block
 
+import net.minecraft.util.IIcon
 import net.minecraftforge.common.util.ForgeDirection
 
-// Ported from AE2's appeng.client.render.BaseBlockRender ORIENTATION_MAP (sliced to the single-axis
-// forward/up pairs AE2 derives from one tracked facing, see TileInterface.setSide), plus a baked-in
-// +180 since the borrowed arrow art points opposite of AE2's own default. Packed value per
-// (facing, face): low 3 bits = uvRotate quadrant, bit 3 = horizontal icon flip, bit 4 = vertical.
-// ORIENTATION_MAP itself is private to AE2's class, so this table can't just reference it directly -
-// icon flipping is handled via AE2's own public appeng.client.texture.TmpFlippableIcon instead.
-//
-// Two gotchas when touching a row: `get` indexes by facing.getOpposite(), so a row's `// facing = X`
-// comment names the row that's actually used when the real facing is X.getOpposite(). And uvRotate
-// quadrants aren't numbered sequentially by degree - rot0/rot3 are the true 180-opposite pair (not
-// rot0/rot2), so a 180 flip is `3 - rot`, not `(rot + 2) & 3`.
+// Implements IIcon directly rather than delegating to AE2's icon-wrapper classes, which call @SideOnly(CLIENT) methods unsafe to run on a dedicated server.
+final class FlippableIcon(private var original: IIcon) extends IIcon {
+  private var flipU = false
+  private var flipV = false
+
+  def wrap(icon: IIcon): FlippableIcon = {
+    original = icon
+    this
+  }
+
+  // Sets the flip bits (8 = horizontal, 16 = vertical) and returns the uvRotate quadrant (low 3 bits).
+  def setFlip(orientation: Int): Int = {
+    flipU = (orientation & 8) == 8
+    flipV = (orientation & 16) == 16
+    orientation & 7
+  }
+
+  override def getIconWidth: Int = original.getIconWidth
+  override def getIconHeight: Int = original.getIconHeight
+  override def getMinU: Float = if (flipU) original.getMaxU else original.getMinU
+  override def getMaxU: Float = if (flipU) original.getMinU else original.getMaxU
+  override def getInterpolatedU(px: Double): Float = if (flipU) original.getInterpolatedU(16 - px) else original.getInterpolatedU(px)
+  override def getMinV: Float = if (flipV) original.getMaxV else original.getMinV
+  override def getMaxV: Float = if (flipV) original.getMinV else original.getMaxV
+  override def getInterpolatedV(px: Double): Float = if (flipV) original.getInterpolatedV(16 - px) else original.getInterpolatedV(px)
+  override def getIconName: String = original.getIconName
+}
+
+// Per (facing, face) rotation and flip for the arrow texture, derived from AE2's BaseBlockRender
+// ORIENTATION_MAP (private there, hence a copy). Low 3 bits = uvRotate quadrant, bit 3 =
+// horizontal icon flip, bit 4 = vertical icon flip. +180 degrees is baked in for the current
+// placeholder arrow texture (AE2's); re-derive the table if that texture is replaced.
 object ActuatorOrientation {
   private val table = Array(
     // facing = DOWN
-    Array(3, 3, 3, 3, 3, 3),
-    // facing = UP
     Array(11, 11, 0, 0, 0, 0),
+    // facing = UP
+    Array(3, 3, 3, 3, 3, 3),
     // facing = NORTH
-    Array(8, 0, 10, 1, 2, 9),
-    // facing = SOUTH
     Array(11, 3, 9, 2, 1, 10),
+    // facing = SOUTH
+    Array(8, 0, 10, 1, 2, 9),
     // facing = WEST
-    Array(9, 2, 9, 2, 18, 2),
+    Array(10, 1, 10, 1, 1, 10),
     // facing = EAST
-    Array(10, 1, 10, 1, 1, 10)
+    Array(9, 2, 9, 2, 18, 2)
   )
 
-  // AE2's TileInterface.setSide sets pointAt = (clicked face).getOpposite() - so pointAt is one
-  // getOpposite() away from the direction Actuator's own "facing" represents. Translate here so
-  // every caller can keep passing Actuator's real facing.
-  def get(facing: ForgeDirection, face: ForgeDirection): Int = table(facing.getOpposite.ordinal)(face.ordinal)
+  def get(facing: ForgeDirection, face: ForgeDirection): Int = table(facing.ordinal)(face.ordinal)
 }

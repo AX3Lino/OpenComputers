@@ -43,7 +43,7 @@ object Blocks {
     GameRegistry.registerTileEntity(classOf[tileentity.Waypoint], Settings.namespace + "waypoint")
 
     Items.registerBlock(new AccessPoint(), Constants.BlockName.AccessPoint)
-    // Recipe intentionally unset - open design question, see Actuator/DualActuator design discussion.
+    // Recipes are placeholders registered by NewHorizonsCoreMod (GT assembler) until final ones are decided.
     Items.registerBlock(new Actuator(), Constants.BlockName.Actuator)
     Items.registerBlock(new DualActuator(), Constants.BlockName.DualActuator)
     Recipes.addBlock(new Adapter(), Constants.BlockName.Adapter, "oc:adapter")

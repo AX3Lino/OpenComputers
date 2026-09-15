@@ -7,7 +7,6 @@ import appeng.api.config.Actionable
 import appeng.api.networking.security.IActionHost
 import appeng.api.networking.security.MachineSource
 import appeng.api.storage.data.IAEItemStack
-import appeng.api.storage.data.IAEStack
 import appeng.me.GridAccessException
 import appeng.me.helpers.AENetworkProxy
 import appeng.util.Platform
@@ -39,12 +38,10 @@ import net.minecraft.init.Blocks
 import net.minecraft.item.ItemStack
 
 import scala.collection.convert.WrapAsJava._
-import scala.collection.convert.WrapAsScala._
-import scala.collection.mutable
 
 // A single-sided, wrench-rotatable device: one facing side touches a physical block, the other
-// "side" is always the ME network it's cabled into. Not Transposer-based - transfers are atomic
-// and unrated, capped only by what the ME network and the facing inventory can actually handle.
+// "side" is always the ME network it's cabled into. Transfers are atomic and unrated, capped only
+// by what the ME network and the facing inventory can actually handle.
 object Actuator {
 
   abstract class Common extends prefab.ManagedEnvironment with DeviceInfo {
@@ -111,8 +108,7 @@ object Actuator {
     }
 
     // ----------------------------------------------------------------------- //
-    // Further info about whatever's on the facing side: one scan-style call (geolyzer.analyze()
-    // idiom) instead of a chainable handle object, since it's just a snapshot, nothing to hold onto.
+    // Further info about whatever's on the facing side, as one snapshot table (geolyzer.analyze() idiom).
 
     private def gtTileEntity(): Option[BaseMetaTileEntity] =
       if (!Mods.GregTech.isAvailable) None
@@ -200,39 +196,6 @@ object Actuator {
         result(true)
       }
       else result(Unit, s"invalid circuit configuration value: $config, must be 1-24 or -1")
-    }
-
-    protected def convert(stack: IAEStack[_]): util.Map[String, AnyRef] = {
-      val converted = new util.HashMap[AnyRef, AnyRef]()
-      AEStackFactory.convert(stack, converted)
-      val hash = new util.HashMap[String, AnyRef]()
-      converted.foreach { case (key: String, value) => hash.put(key, value); case _ => }
-      hash
-    }
-
-    protected def matches(stack: util.Map[String, AnyRef], filter: mutable.Map[String, AnyRef]): Boolean = {
-      if (stack == null) false
-      else filter.forall { case (key, value) =>
-        val stackValue = stack.get(key)
-        if (stackValue == null) false
-        else (value, stackValue) match {
-          case (number: Number, stackNumber: Number) => number.intValue() == stackNumber.intValue()
-          case (arr: Array[Byte], stackArr: Array[Byte]) => arr.sameElements(stackArr)
-          case (str: String, stackArr: Array[Byte]) => str.equals(stackArr.mkString)
-          case (_, _) => value.toString.equals(stackValue.toString)
-        }
-      }
-    }
-
-    protected def networkFilter(args: Arguments, index: Int): mutable.Map[String, AnyRef] =
-      args.optTable(index, Map.empty[AnyRef, AnyRef]).collect { case (key: String, value: AnyRef) => (key, value) }
-
-    @Callback(doc = """function([filter:table]):table -- Get a list of the stored items in this device's own ME network.""")
-    def getItemsInNetwork(context: Context, args: Arguments): Array[AnyRef] = {
-      val p = proxy.getOrElse(return result(Unit, "no ME network"))
-      if (!p.isActive) return result(Unit, "no ME network")
-      val filter = networkFilter(args, 0)
-      result(p.getStorage.getItemInventory.getStorageList.view.map(convert).filter(matches(_, filter)).toArray)
     }
 
     // ----------------------------------------------------------------------- //

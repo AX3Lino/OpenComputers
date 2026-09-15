@@ -23,6 +23,26 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
 
     val renderer = patchedRenderer(realRenderer, block)
     val tessellator = Tessellator.instance
+
+    def renderStandardItem(): Unit = {
+      block match {
+        case simple: common.block.SimpleBlock =>
+          simple.setBlockBoundsForItemRender(metadata)
+          simple.preItemRender(metadata)
+        case _ => block.setBlockBoundsForItemRender()
+      }
+      renderer.setRenderBoundsFromBlock(block)
+      GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
+      tessellator.startDrawingQuads()
+      renderFaceYNeg(block, metadata, renderer)
+      renderFaceYPos(block, metadata, renderer)
+      renderFaceZNeg(block, metadata, renderer)
+      renderFaceZPos(block, metadata, renderer)
+      renderFaceXNeg(block, metadata, renderer)
+      renderFaceXPos(block, metadata, renderer)
+      tessellator.draw()
+    }
+
     GL11.glPushMatrix()
     block match {
       case _: common.block.Assembler =>
@@ -63,58 +83,22 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
       case _: common.block.Actuator =>
         // No tile entity here, so use the fixed default facing (SOUTH), same as
         // common.block.Actuator's own getIcon(side, metadata) override.
-        block match {
-          case simple: common.block.SimpleBlock =>
-            simple.setBlockBoundsForItemRender(metadata)
-            simple.preItemRender(metadata)
-          case _ => block.setBlockBoundsForItemRender()
-        }
-        renderer.setRenderBoundsFromBlock(block)
-        GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
-
         setActuatorUvRotate(renderer, ForgeDirection.SOUTH)
-
-        tessellator.startDrawingQuads()
-        renderFaceYNeg(block, metadata, renderer)
-        renderFaceYPos(block, metadata, renderer)
-        renderFaceZNeg(block, metadata, renderer)
-        renderFaceZPos(block, metadata, renderer)
-        renderFaceXNeg(block, metadata, renderer)
-        renderFaceXPos(block, metadata, renderer)
-        tessellator.draw()
-
+        renderStandardItem()
         clearUvRotate(renderer)
 
       case _ =>
-        block match {
-          case simple: common.block.SimpleBlock =>
-            simple.setBlockBoundsForItemRender(metadata)
-            simple.preItemRender(metadata)
-          case _ => block.setBlockBoundsForItemRender()
-        }
-        renderer.setRenderBoundsFromBlock(block)
-        GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
-        tessellator.startDrawingQuads()
-        renderFaceYNeg(block, metadata, renderer)
-        renderFaceYPos(block, metadata, renderer)
-        renderFaceZNeg(block, metadata, renderer)
-        renderFaceZPos(block, metadata, renderer)
-        renderFaceXNeg(block, metadata, renderer)
-        renderFaceXPos(block, metadata, renderer)
-        tessellator.draw()
-
+        renderStandardItem()
     }
     GL11.glPopMatrix()
 
   }
 
-  // Only the 4 lateral faces need the arrow-rotation table - Front/Back always show their own
-  // texture right-side up, toLocal already puts the correct one on the correct face.
-  //
-  // RenderBlocks' uvRotateXXX fields are, confusingly, not named after the face they affect for the
-  // lateral faces (confirmed in source): renderFaceZNeg (NORTH) reads uvRotateEast, renderFaceZPos
-  // (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST) reads uvRotateNorth, renderFaceXPos (EAST)
-  // reads uvRotateSouth. Only uvRotateTop/Bottom match their face. Crossed below to match reality.
+  // Only the 4 lateral faces need the arrow-rotation table - toLocal already puts the correct
+  // texture on Front/Back, right-side up. RenderBlocks' uvRotateXXX fields are each read by a
+  // different face than their name suggests: renderFaceZNeg (NORTH) reads uvRotateEast,
+  // renderFaceZPos (SOUTH) reads uvRotateWest, renderFaceXNeg (WEST) reads uvRotateNorth,
+  // renderFaceXPos (EAST) reads uvRotateSouth - only uvRotateTop/Bottom match their face name.
   private def setActuatorUvRotate(renderer: RenderBlocks, forward: ForgeDirection): Unit = {
     def rotate(face: ForgeDirection) =
       if (face == forward || face == forward.getOpposite) 0
