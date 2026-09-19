@@ -2,6 +2,13 @@ package li.cil.oc.common.tileentity
 
 import java.util
 
+import appeng.api.networking.GridFlags
+import appeng.api.networking.IGridNode
+import appeng.api.networking.security.IActionHost
+import appeng.api.util.AECableType
+import appeng.api.util.DimensionalCoord
+import appeng.me.helpers.AENetworkProxy
+import appeng.me.helpers.IGridProxyable
 import cpw.mods.fml.relauncher.Side
 import cpw.mods.fml.relauncher.SideOnly
 import li.cil.oc.Constants
@@ -15,6 +22,7 @@ import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Callback
 import li.cil.oc.api.machine.Context
 import li.cil.oc.api.network._
+import li.cil.oc.common.EventHandler
 import li.cil.oc.common.Tier
 import li.cil.oc.common.item.data.MicrocontrollerData
 import li.cil.oc.util.ExtendedArguments._
@@ -28,7 +36,7 @@ import net.minecraftforge.common.util.ForgeDirection
 
 import scala.collection.convert.WrapAsJava._
 
-class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.Computer with ISidedInventory with internal.Microcontroller with DeviceInfo {
+class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.Computer with ISidedInventory with internal.Microcontroller with DeviceInfo with traits.SelectableOutputSide with IGridProxyable with IActionHost {
   val info = new MicrocontrollerData()
 
   override def node = null
@@ -128,6 +136,60 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   }
 
   // ----------------------------------------------------------------------- //
+  // With an actuator upgrade, a channel-requiring node replaces the power-only one from traits.power.AppliedEnergistics2, which addresses its own via UNKNOWN.
+
+  private def isActuatorUpgrade(stack: ItemStack) = stack != null && {
+    val descriptor = api.Items.get(stack)
+    descriptor == api.Items.get(Constants.BlockName.Actuator) || descriptor == api.Items.get(Constants.BlockName.DualActuator)
+  }
+
+  def hasActuatorUpgrade = info.components.exists(isActuatorUpgrade)
+
+  private lazy val actuatorProxy = {
+    val proxy = new AENetworkProxy(this, "actuatorProxy", api.Items.get(Constants.BlockName.Actuator).createItemStack(1), true)
+    proxy.setFlags(GridFlags.REQUIRE_CHANNEL)
+    proxy.setIdlePowerUsage(Settings.get.actuatorIdleAEPower)
+    proxy.setValidSides(util.EnumSet.complementOf(util.EnumSet.of(ForgeDirection.UNKNOWN)))
+    proxy
+  }
+
+  private def actuatorNodeActive = hasActuatorUpgrade && actuatorProxy.isReady
+
+  override def getProxy: AENetworkProxy = actuatorProxy
+
+  override def getActionableNode: IGridNode = if (actuatorNodeActive) actuatorProxy.getNode else null
+
+  override def getGridNode(dir: ForgeDirection): IGridNode =
+    if (dir != ForgeDirection.UNKNOWN && actuatorNodeActive) actuatorProxy.getNode else super.getGridNode(dir)
+
+  override def getCableConnectionType(dir: ForgeDirection): AECableType = AECableType.SMART
+
+  override def getLocation = new DimensionalCoord(this)
+
+  override def gridChanged() {}
+
+  override def securityBreak() {
+    if (hasActuatorUpgrade) actuatorProxy.invalidate()
+    super.securityBreak()
+  }
+
+  // Components aren't loaded yet when initialize() runs on placement, so this is scheduled a tick later.
+  private def syncActuatorProxy(): Unit = if (isServer && !isInvalid && hasActuatorUpgrade && !actuatorProxy.isReady) {
+    super.securityBreak()
+    actuatorProxy.onReady()
+  }
+
+  override protected def initialize() {
+    super.initialize()
+    if (isServer) EventHandler.scheduleServer(() => syncActuatorProxy())
+  }
+
+  override def dispose() {
+    super.dispose()
+    if (isServer && hasActuatorUpgrade) actuatorProxy.invalidate()
+  }
+
+  // ----------------------------------------------------------------------- //
 
   override def canUpdate = isServer
 
@@ -213,6 +275,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
     }
     snooperNode.load(nbt.getCompoundTag(Settings.namespace + "snooper"))
     super.readFromNBTForServer(nbt)
+    if (hasActuatorUpgrade) actuatorProxy.readFromNBT(nbt)
     api.Network.joinNewNetwork(machine.node)
     machine.node.connect(snooperNode)
   }
@@ -229,6 +292,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
       case _ => new NBTTagCompound()
     })
     nbt.setNewCompoundTag(Settings.namespace + "snooper", snooperNode.save)
+    if (hasActuatorUpgrade) actuatorProxy.writeToNBT(nbt)
   }
 
   // ----------------------------------------------------------------------- //

@@ -5,7 +5,10 @@ import java.util
 import li.cil.oc.Constants
 import li.cil.oc.Settings
 import li.cil.oc.api
+import cpw.mods.fml.relauncher.Side
+import cpw.mods.fml.relauncher.SideOnly
 import li.cil.oc.client.KeyBindings
+import li.cil.oc.client.Textures
 import li.cil.oc.common.Tier
 import li.cil.oc.common.item.data.MicrocontrollerData
 import li.cil.oc.common.tileentity
@@ -15,9 +18,12 @@ import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.InventoryUtils
 import li.cil.oc.util.Rarity
 import net.minecraft.entity.EntityLivingBase
+import net.minecraft.client.renderer.texture.IIconRegister
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemStack
+import net.minecraft.util.IIcon
 import net.minecraft.util.MovingObjectPosition
+import net.minecraft.world.IBlockAccess
 import net.minecraft.world.World
 import net.minecraftforge.common.util.ForgeDirection
 
@@ -35,6 +41,20 @@ class Microcontroller(protected implicit val tileTag: ClassTag[tileentity.Microc
     Some("MicrocontrollerSide"),
     Some("MicrocontrollerSide")
   )
+
+  @SideOnly(Side.CLIENT)
+  override def registerBlockIcons(iconRegister: IIconRegister): Unit = {
+    super.registerBlockIcons(iconRegister)
+    Textures.Microcontroller.iconOutput = iconRegister.registerIcon(Settings.resourceDomain + ":MicrocontrollerOutput")
+  }
+
+  // Marks the wrench-set output side, only once an upgrade that acts on it is installed.
+  @SideOnly(Side.CLIENT)
+  override def getIcon(world: IBlockAccess, x: Int, y: Int, z: Int, globalSide: ForgeDirection, localSide: ForgeDirection): IIcon =
+    world.getTileEntity(x, y, z) match {
+      case mcu: tileentity.Microcontroller if mcu.hasActuatorUpgrade && globalSide == mcu.outputSide => Textures.Microcontroller.iconOutput
+      case _ => super.getIcon(world, x, y, z, globalSide, localSide)
+    }
 
   // ----------------------------------------------------------------------- //
 

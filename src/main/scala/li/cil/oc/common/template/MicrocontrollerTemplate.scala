@@ -129,7 +129,7 @@ object MicrocontrollerTemplate extends Template {
   }
 
   override protected def maxComplexity(inventory: IInventory) =
-    if (caseTier(inventory) == Tier.Two) 5
+    if (caseTier(inventory) == Tier.Two) 7
     else if (caseTier(inventory) == Tier.Four) 9001 // Creative
     else 4
 

@@ -25,6 +25,7 @@ import li.cil.oc.api.driver.DeviceInfo.DeviceClass
 import li.cil.oc.api.machine.Arguments
 import li.cil.oc.api.machine.Callback
 import li.cil.oc.api.machine.Context
+import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.api.prefab
 import li.cil.oc.common.tileentity
@@ -39,9 +40,9 @@ import net.minecraft.item.ItemStack
 
 import scala.collection.convert.WrapAsJava._
 
-// A single-sided, wrench-rotatable device: one facing side touches a physical block, the other
-// "side" is always the ME network it's cabled into. Transfers are atomic and unrated, capped only
-// by what the ME network and the facing inventory can actually handle.
+// Acts on the single wrench-set output side of its host, the other "side" is always the ME network
+// the host is cabled into. Transfers are atomic and unrated, capped only by what the ME network and
+// the output-side inventory can actually handle.
 object Actuator {
 
   abstract class Common extends prefab.ManagedEnvironment with DeviceInfo {
@@ -50,7 +51,7 @@ object Actuator {
       withConnector().
       create()
 
-    def host: tileentity.Actuator
+    def host: EnvironmentHost with tileentity.traits.OutputSide
 
     protected def proxy: Option[AENetworkProxy]
 
@@ -71,9 +72,9 @@ object Actuator {
 
     protected def position = BlockPosition(host)
 
-    protected def facingSide = host.facing
+    protected def outputSide = host.outputSide
 
-    protected def facingPos = position.offset(facingSide)
+    protected def outputPos = position.offset(outputSide)
 
     // ----------------------------------------------------------------------- //
 
@@ -81,24 +82,24 @@ object Actuator {
     def isMeConnected(context: Context, args: Arguments): Array[AnyRef] = result(proxy.exists(_.isActive))
 
     // Same names/split as traits.WorldInventoryAnalytics' getInventorySize(side)/getSlotMaxStackSize(side, slot)
-    // (used by Transposer and others), just without the side argument - Actuator only has one facing side.
+    // (used by Transposer and others), just without the side argument - Actuator only has one output side.
 
-    @Callback(doc = """function():number -- Get the number of slots in the inventory on the facing side.""")
+    @Callback(doc = """function():number -- Get the number of slots in the inventory on the output side.""")
     def getInventorySize(context: Context, args: Arguments): Array[AnyRef] = {
-      val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
+      val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
       result(inventory.getSizeInventory)
     }
 
-    @Callback(doc = """function(slot:number):number -- Get the maximum number of items in the specified slot of the inventory on the facing side.""")
+    @Callback(doc = """function(slot:number):number -- Get the maximum number of items in the specified slot of the inventory on the output side.""")
     def getSlotMaxStackSize(context: Context, args: Arguments): Array[AnyRef] = {
-      val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
+      val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
       val slot = args.checkSlot(inventory, 0)
       result(Option(inventory.getStackInSlot(slot)).fold(0)(_.getMaxStackSize))
     }
 
-    @Callback(doc = """function([slot:number]):table -- Get a description of the stack in the given slot of the inventory on the facing side, or of every slot (1-indexed) if none given.""")
+    @Callback(doc = """function([slot:number]):table -- Get a description of the stack in the given slot of the inventory on the output side, or of every slot (1-indexed) if none given.""")
     def getInventoryContent(context: Context, args: Arguments): Array[AnyRef] = {
-      val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
+      val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
       if (args.count() > 0) result(inventory.getStackInSlot(args.checkSlot(inventory, 0)))
       else {
         val stacks = new Array[ItemStack](inventory.getSizeInventory)
@@ -108,11 +109,11 @@ object Actuator {
     }
 
     // ----------------------------------------------------------------------- //
-    // Further info about whatever's on the facing side, as one snapshot table (geolyzer.analyze() idiom).
+    // Further info about whatever's on the output side, as one snapshot table (geolyzer.analyze() idiom).
 
     private def gtTileEntity(): Option[BaseMetaTileEntity] =
       if (!Mods.GregTech.isAvailable) None
-      else host.world.getTileEntity(facingPos.x, facingPos.y, facingPos.z) match {
+      else host.world.getTileEntity(outputPos.x, outputPos.y, outputPos.z) match {
         case mte: BaseMetaTileEntity => Some(mte)
         case _ => None
       }
@@ -122,9 +123,9 @@ object Actuator {
     private def circuitConfigurableMachine(): Option[IMetaTileEntity with IConfigurationCircuitSupport] =
       gtMachine().collect { case ccs: IMetaTileEntity with IConfigurationCircuitSupport => ccs }
 
-    @Callback(doc = """function():table -- Scan whatever's on the facing side: name, position, and for GregTech machines also its meta tile ID, energy/activity/progress, circuit configuration, and (multiblocks only) efficiency/pollution/maintenance/owner/runtime if applicable.""")
+    @Callback(doc = """function():table -- Scan whatever's on the output side: name, position, and for GregTech machines also its meta tile ID, energy/activity/progress, circuit configuration, and (multiblocks only) efficiency/pollution/maintenance/owner/runtime if applicable.""")
     def scanMachine(context: Context, args: Arguments): Array[AnyRef] = {
-      val pos = facingPos
+      val pos = outputPos
       val block = host.world.getBlock(pos.x, pos.y, pos.z)
       if (block == Blocks.air) return result(Unit, "no block")
       val metadata = host.world.getBlockMetadata(pos.x, pos.y, pos.z)
@@ -180,7 +181,7 @@ object Actuator {
     }
 
     // Doesn't fit scanMachine()'s read-only shape, but the ghost circuit needs a way to be set.
-    @Callback(doc = """function(config:number):boolean -- Set the circuit configuration of the GregTech machine on the facing side. Use -1 to remove the circuit.""")
+    @Callback(doc = """function(config:number):boolean -- Set the circuit configuration of the GregTech machine on the output side. Use -1 to remove the circuit.""")
     def setCircuitConfiguration(context: Context, args: Arguments): Array[AnyRef] = {
       val mte = circuitConfigurableMachine().getOrElse(return result(Unit, "machine does not support circuit configuration"))
       val slot = mte.getCircuitSlot
@@ -199,9 +200,9 @@ object Actuator {
     }
 
     // ----------------------------------------------------------------------- //
-    // Item transfers: always between the ME network and whatever is on the facing side.
+    // Item transfers: always between the ME network and whatever is on the output side.
 
-    @Callback(doc = """function(filter:table[, count:number[, slot:number]]):number -- Export items from the ME network into whatever is on the facing side.""")
+    @Callback(doc = """function(filter:table[, count:number[, slot:number]]):number -- Export items from the ME network into whatever is on the output side.""")
     def exportItem(context: Context, args: Arguments): Array[AnyRef] = {
       onTransferContents() match {
         case Some(reason) => return result(Unit, reason)
@@ -215,7 +216,7 @@ object Actuator {
       }.orNull
       if (request == null) return result(Unit, "invalid filter")
 
-      val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
+      val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
       val sinkSlot = args.optSlot(inventory, 2, -1)
 
       val p = proxy.getOrElse(return result(Unit, "no ME network"))
@@ -228,8 +229,8 @@ object Actuator {
         // Simulate insertion first, then extract from the network and commit; any leftover goes back to the network.
         val simulated = request.getItemStack
         val fits =
-          if (sinkSlot < 0) InventoryUtils.insertIntoInventory(simulated, inventory, Option(facingSide.getOpposite), count, simulate = true)
-          else InventoryUtils.insertIntoInventorySlot(simulated, inventory, Option(facingSide.getOpposite), sinkSlot, count, simulate = true)
+          if (sinkSlot < 0) InventoryUtils.insertIntoInventory(simulated, inventory, Option(outputSide.getOpposite), count, simulate = true)
+          else InventoryUtils.insertIntoInventorySlot(simulated, inventory, Option(outputSide.getOpposite), sinkSlot, count, simulate = true)
         if (!fits) return result(0)
 
         request.setStackSize(count - simulated.stackSize)
@@ -238,8 +239,8 @@ object Actuator {
 
         val stack = extracted.getItemStack
         var moved = stack.stackSize
-        if (sinkSlot < 0) InventoryUtils.insertIntoInventory(stack, inventory, Option(facingSide.getOpposite))
-        else InventoryUtils.insertIntoInventorySlot(stack, inventory, Option(facingSide.getOpposite), sinkSlot)
+        if (sinkSlot < 0) InventoryUtils.insertIntoInventory(stack, inventory, Option(outputSide.getOpposite))
+        else InventoryUtils.insertIntoInventorySlot(stack, inventory, Option(outputSide.getOpposite), sinkSlot)
         if (stack.stackSize > 0) {
           moved -= stack.stackSize
           val leftover = extracted.copy()
@@ -253,7 +254,7 @@ object Actuator {
       }
     }
 
-    @Callback(doc = """function([count:number[, slot:number]]):number -- Import items from whatever is on the facing side into the ME network.""")
+    @Callback(doc = """function([count:number[, slot:number]]):number -- Import items from whatever is on the output side into the ME network.""")
     def importItem(context: Context, args: Arguments): Array[AnyRef] = {
       onTransferContents() match {
         case Some(reason) => return result(Unit, reason)
@@ -261,7 +262,7 @@ object Actuator {
       }
 
       val count = args.optItemCount(0)
-      val inventory = InventoryUtils.inventoryAt(facingPos).getOrElse(return result(Unit, "no inventory"))
+      val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
       val sourceSlot = args.optSlot(inventory, 1, -1)
 
       val p = proxy.getOrElse(return result(Unit, "no ME network"))
@@ -276,8 +277,8 @@ object Actuator {
           stack.stackSize = if (leftover == null) 0 else leftover.getStackSize.toInt
         }
         val moved =
-          if (sourceSlot < 0) InventoryUtils.extractAnyFromInventory(consumer, inventory, facingSide.getOpposite, count)
-          else InventoryUtils.extractFromInventorySlot(consumer, inventory, facingSide.getOpposite, sourceSlot, count)
+          if (sourceSlot < 0) InventoryUtils.extractAnyFromInventory(consumer, inventory, outputSide.getOpposite, count)
+          else InventoryUtils.extractFromInventorySlot(consumer, inventory, outputSide.getOpposite, sourceSlot, count)
         result(moved)
       }
       catch {
@@ -289,6 +290,15 @@ object Actuator {
   /** Hosted by the Actuator block's own tile entity. */
   class Block(val host: tileentity.Actuator) extends Common {
     override protected def proxy = Some(host.getProxy)
+
+    override protected def actionHost: IActionHost = host
+  }
+
+  /** Hosted as a microcontroller upgrade; the microcontroller owns the grid node. */
+  class Upgrade(val host: tileentity.Microcontroller) extends Common {
+    node.setVisibility(Visibility.Neighbors)
+
+    override protected def proxy = Option(host.getProxy)
 
     override protected def actionHost: IActionHost = host
   }

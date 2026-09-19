@@ -25,7 +25,7 @@ import net.minecraftforge.fluids.FluidTankInfo
 
 import scala.collection.convert.WrapAsJava._
 
-// A DualActuator adds fluid import/export on top of Actuator's item capability, same facing side.
+// A DualActuator adds fluid import/export on top of Actuator's item capability, same output side.
 object DualActuator {
 
   abstract class Common extends Actuator.Common {
@@ -45,28 +45,28 @@ object DualActuator {
 
     // ----------------------------------------------------------------------- //
 
-    @Callback(doc = """function([tank:number]):table -- Get the capacity of the given tank (1-indexed) on the facing side, or of every tank if none given - #result then gives the tank count.""")
+    @Callback(doc = """function([tank:number]):table -- Get the capacity of the given tank (1-indexed) on the output side, or of every tank if none given - #result then gives the tank count.""")
     def getTankCapacity(context: Context, args: Arguments): Array[AnyRef] = {
-      val handler = FluidUtils.fluidHandlerAt(facingPos).getOrElse(return result(Unit, "no tank"))
-      val info = handler.getTankInfo(facingSide.getOpposite)
+      val handler = FluidUtils.fluidHandlerAt(outputPos).getOrElse(return result(Unit, "no tank"))
+      val info = handler.getTankInfo(outputSide.getOpposite)
       if (info == null) return result(Unit, "no tank")
-      if (args.count() > 0) result(args.checkTankInfo(handler, facingSide.getOpposite, 0).capacity)
+      if (args.count() > 0) result(args.checkTankInfo(handler, outputSide.getOpposite, 0).capacity)
       else result(info.map(_.capacity.underlying: AnyRef))
     }
 
-    @Callback(doc = """function([tank:number]):table -- Get the fluid in the given tank (1-indexed) on the facing side, or in every tank if none given.""")
+    @Callback(doc = """function([tank:number]):table -- Get the fluid in the given tank (1-indexed) on the output side, or in every tank if none given.""")
     def getTankContent(context: Context, args: Arguments): Array[AnyRef] = {
-      val handler = FluidUtils.fluidHandlerAt(facingPos).getOrElse(return result(Unit, "no tank"))
-      val info: Array[FluidTankInfo] = handler.getTankInfo(facingSide.getOpposite)
+      val handler = FluidUtils.fluidHandlerAt(outputPos).getOrElse(return result(Unit, "no tank"))
+      val info: Array[FluidTankInfo] = handler.getTankInfo(outputSide.getOpposite)
       if (info == null) return result(Unit, "no tank")
-      if (args.count() > 0) result(args.checkTankInfo(handler, facingSide.getOpposite, 0))
+      if (args.count() > 0) result(args.checkTankInfo(handler, outputSide.getOpposite, 0))
       else result(info)
     }
 
     // ----------------------------------------------------------------------- //
-    // Fluid transfers: always between the ME network and whatever is on the facing side.
+    // Fluid transfers: always between the ME network and whatever is on the output side.
 
-    @Callback(doc = """function(filter:table[, count:number[, tank:number]]):boolean, number -- Export fluid from the ME network into whatever is on the facing side. Returns operation result and filled amount.""")
+    @Callback(doc = """function(filter:table[, count:number[, tank:number]]):boolean, number -- Export fluid from the ME network into whatever is on the output side. Returns operation result and filled amount.""")
     def exportFluid(context: Context, args: Arguments): Array[AnyRef] = {
       onTransferContents() match {
         case Some(reason) => return result(Unit, reason)
@@ -80,7 +80,7 @@ object DualActuator {
       }.orNull
       if (request == null) return result(Unit, "invalid filter")
 
-      val handler = FluidUtils.fluidHandlerAt(facingPos).getOrElse(return result(Unit, "no tank"))
+      val handler = FluidUtils.fluidHandlerAt(outputPos).getOrElse(return result(Unit, "no tank"))
 
       val p = proxy.getOrElse(return result(Unit, "no ME network"))
       try {
@@ -93,10 +93,10 @@ object DualActuator {
 
         // Forge's IFluidHandler.fill can't target a specific tank directly - best effort: reject up
         // front if the requested tank already holds a different, incompatible fluid.
-        val tank = args.optTankInfo(handler, facingSide.getOpposite, 2, null)
+        val tank = args.optTankInfo(handler, outputSide.getOpposite, 2, null)
         if (tank != null && tank.fluid != null && !tank.fluid.isFluidEqual(simulated)) return result(false, 0)
 
-        val fits = handler.fill(facingSide.getOpposite, simulated, false)
+        val fits = handler.fill(outputSide.getOpposite, simulated, false)
         if (fits <= 0) return result(false, 0)
 
         request.setStackSize(fits)
@@ -104,7 +104,7 @@ object DualActuator {
         if (extracted == null || extracted.getStackSize == 0) return result(false, 0)
 
         val stack = extracted.getFluidStack
-        val filled = handler.fill(facingSide.getOpposite, stack, true)
+        val filled = handler.fill(outputSide.getOpposite, stack, true)
         if (filled < stack.amount) {
           val leftover = extracted.copy()
           leftover.setStackSize(stack.amount - filled)
@@ -117,7 +117,7 @@ object DualActuator {
       }
     }
 
-    @Callback(doc = """function([count:number[, tank:number]]):boolean, number -- Import fluid from whatever is on the facing side into the ME network. Returns operation result and drained amount.""")
+    @Callback(doc = """function([count:number[, tank:number]]):boolean, number -- Import fluid from whatever is on the output side into the ME network. Returns operation result and drained amount.""")
     def importFluid(context: Context, args: Arguments): Array[AnyRef] = {
       onTransferContents() match {
         case Some(reason) => return result(Unit, reason)
@@ -125,8 +125,8 @@ object DualActuator {
       }
 
       val count = args.optFluidCount(0)
-      val handler = FluidUtils.fluidHandlerAt(facingPos).getOrElse(return result(Unit, "no tank"))
-      val drainSide = facingSide.getOpposite
+      val handler = FluidUtils.fluidHandlerAt(outputPos).getOrElse(return result(Unit, "no tank"))
+      val drainSide = outputSide.getOpposite
 
       val p = proxy.getOrElse(return result(Unit, "no ME network"))
       try {
@@ -162,6 +162,15 @@ object DualActuator {
   /** Hosted by the DualActuator block's own tile entity. */
   class Block(val host: tileentity.DualActuator) extends Common {
     override protected def proxy = Some(host.getProxy)
+
+    override protected def actionHost: IActionHost = host
+  }
+
+  /** Hosted as a microcontroller upgrade; the microcontroller owns the grid node. */
+  class Upgrade(val host: tileentity.Microcontroller) extends Common {
+    node.setVisibility(Visibility.Neighbors)
+
+    override protected def proxy = Option(host.getProxy)
 
     override protected def actionHost: IActionHost = host
   }

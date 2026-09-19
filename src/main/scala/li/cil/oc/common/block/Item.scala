@@ -103,6 +103,11 @@ class Item(value: Block) extends ItemBlock(value) {
           }
         case _ => // Ignore.
       }
+      world.getTileEntity(x, y, z) match {
+        case selectable: tileentity.traits.SelectableOutputSide =>
+          selectable.setOutputSide(ForgeDirection.getOrientation(side).getOpposite)
+        case _ =>
+      }
       true
     }
     else false

@@ -27,8 +27,10 @@ import net.minecraftforge.common.util.ForgeDirection
 // Single wrench-rotatable facing side (traits.Rotatable). Also implements IC2's IWrenchable, purely so
 // GT5's wrench (BehaviourWrench/BlockOverlayRenderer) recognizes this as directly-facing-settable and
 // draws its rotation grid + current-facing indicator, the same as it does for hoppers/droppers/etc.
-class Actuator extends traits.Environment with traits.Rotatable with IWrenchable with IGridProxyable with IActionHost with IPowerChannelState {
+class Actuator extends traits.Environment with traits.OutputSide with IWrenchable with IGridProxyable with IActionHost with IPowerChannelState {
   protected def blockName = Constants.BlockName.Actuator
+
+  override def outputSide: ForgeDirection = facing
 
   override def wrenchCanSetFacing(player: EntityPlayer, side: Int): Boolean = true
 

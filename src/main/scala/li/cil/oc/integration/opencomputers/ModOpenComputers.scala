@@ -174,6 +174,7 @@ object ModOpenComputers extends ModProxy {
     api.Driver.add(DriverUpgradeTrading)
     api.Driver.add(DriverUpgradeMF)
     api.Driver.add(DriverUpgradeConfigurator)
+    api.Driver.add(DriverActuator)
 
     api.Driver.add(DriverAPU.Provider)
     api.Driver.add(DriverDataCard.Provider)
@@ -212,8 +213,11 @@ object ModOpenComputers extends ModProxy {
     api.Driver.add(InventoryProviderDatabase)
     api.Driver.add(InventoryProviderServer)
     api.Driver.add(DriverUpgradeConfigurator.Provider)
+    api.Driver.add(DriverActuator.Provider)
 
     blacklistHost(classOf[internal.Adapter],
+      Constants.BlockName.Actuator,
+      Constants.BlockName.DualActuator,
       Constants.BlockName.Geolyzer,
       Constants.BlockName.MotionSensor,
       Constants.BlockName.Keyboard,
@@ -247,6 +251,8 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.UpgradeAE3
     )
     blacklistHost(classOf[internal.Drone],
+      Constants.BlockName.Actuator,
+      Constants.BlockName.DualActuator,
       Constants.BlockName.Keyboard,
       Constants.BlockName.ScreenTier1,
       Constants.BlockName.Transposer,
@@ -301,6 +307,8 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.UpgradeAE3
     )
     blacklistHost(classOf[internal.Robot],
+      Constants.BlockName.Actuator,
+      Constants.BlockName.DualActuator,
       Constants.BlockName.Transposer,
       Constants.BlockName.CarpetedCapacitor,
       Constants.ItemName.Analyzer,
@@ -308,6 +316,8 @@ object ModOpenComputers extends ModProxy {
       Constants.ItemName.RITEGUpgrade
     )
     blacklistHost(classOf[internal.Tablet],
+      Constants.BlockName.Actuator,
+      Constants.BlockName.DualActuator,
       Constants.BlockName.ScreenTier1,
       Constants.BlockName.Transposer,
       Constants.BlockName.CarpetedCapacitor,

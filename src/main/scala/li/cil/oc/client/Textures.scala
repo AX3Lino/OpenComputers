@@ -88,6 +88,10 @@ object Textures {
     var iconCap: IIcon = _
   }
 
+  object Microcontroller {
+    var iconOutput: IIcon = _
+  }
+
   object Charger {
     var iconFrontCharging: IIcon = _
     var iconSideCharging: IIcon = _
