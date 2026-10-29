@@ -36,6 +36,7 @@ class Actuator extends SimpleBlock {
   override def registerBlockIcons(iconRegister: IIconRegister): Unit = {
     super.registerBlockIcons(iconRegister)
     Textures.Actuator.iconOn = iconRegister.registerIcon(Settings.resourceDomain + ":ActuatorOn")
+    Textures.Actuator.iconPowered = iconRegister.registerIcon(Settings.resourceDomain + ":ActuatorPowered")
   }
 
   // World-placed block: real facing from the tile entity. Front/Back stay unmirrored - only the

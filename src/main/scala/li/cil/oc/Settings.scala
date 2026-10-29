@@ -234,6 +234,8 @@ class Settings(val config: Config) {
   val transposerCost = config.getDouble("power.cost.transposer") max 0
   val actuatorCost = config.getDouble("power.cost.actuator") max 0
   val actuatorIdleAEPower = config.getDouble("power.cost.actuatorIdleAE") max 0
+  val vinculumCost = config.getDouble("power.cost.vinculum") max 0
+  val vinculumIdleAEPower = config.getDouble("power.cost.vinculumIdleAE") max 0
   val nanomachineCost = config.getDouble("power.cost.nanomachineInput") max 0
   val nanomachineReconfigureCost = config.getDouble("power.cost.nanomachinesReconfigure") max 0
   val mfuCost = config.getDouble("power.cost.mfuRelay") max 0

@@ -52,7 +52,7 @@ class Microcontroller(protected implicit val tileTag: ClassTag[tileentity.Microc
   @SideOnly(Side.CLIENT)
   override def getIcon(world: IBlockAccess, x: Int, y: Int, z: Int, globalSide: ForgeDirection, localSide: ForgeDirection): IIcon =
     world.getTileEntity(x, y, z) match {
-      case mcu: tileentity.Microcontroller if mcu.hasActuatorUpgrade && globalSide == mcu.outputSide => Textures.Microcontroller.iconOutput
+      case mcu: tileentity.Microcontroller if mcu.hasMEUpgrade && globalSide == mcu.outputSide => Textures.Microcontroller.iconOutput
       case _ => super.getIcon(world, x, y, z, globalSide, localSide)
     }
 

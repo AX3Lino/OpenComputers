@@ -9,3 +9,5 @@ It can move items between the ME network and the inventory on its facing side, a
 *Note that, unlike the [transposer](transposer.md), the actuator has no internal inventory - transfers are direct between the ME network and the facing block.*
 
 Like the [geolyzer](geolyzer.md), it can also be installed in a [microcontroller](microcontroller.md) as an upgrade, where it acts on the microcontroller's wrench-set output side. The microcontroller must then be cabled into an ME network, the same way the block is.
+
+The face turned away from the target carries a status light: dim while the block has AE power, lit once it also has a channel.

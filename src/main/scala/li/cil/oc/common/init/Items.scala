@@ -554,6 +554,10 @@ object Items extends ItemAPI {
 
     Recipes.addSubItem(new item.TpsCard(multi), Constants.ItemName.TpsCard, "oc:tpsCard")
 
+    // Recipes are placeholders registered by NewHorizonsCoreMod (GT assembler) until final ones are decided.
+    registerItem(new item.NanoprobeItem(multi), Constants.ItemName.NanoprobeItem)
+    registerItem(new item.NanoprobeFluid(multi), Constants.ItemName.NanoprobeFluid)
+
     // Register aliases.
     for ((k, v) <- aliases) {
       descriptors.getOrElseUpdate(k, descriptors(v))

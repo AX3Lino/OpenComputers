@@ -2,20 +2,9 @@ package li.cil.oc.server.component
 
 import java.util
 
-import appeng.api.AEApi
-import appeng.api.config.Actionable
 import appeng.api.networking.security.IActionHost
-import appeng.api.networking.security.MachineSource
 import appeng.api.storage.data.IAEItemStack
-import appeng.me.GridAccessException
 import appeng.me.helpers.AENetworkProxy
-import appeng.util.Platform
-import gregtech.api.interfaces.IConfigurationCircuitSupport
-import gregtech.api.interfaces.metatileentity.IMetaTileEntity
-import gregtech.api.metatileentity.BaseMetaTileEntity
-import gregtech.api.metatileentity.implementations.MTEMultiBlockBase
-import gregtech.api.util.GTUtility
-import gregtech.common.items.ItemIntegratedCircuit
 import li.cil.oc.Constants
 import li.cil.oc.Settings
 import li.cil.oc.api
@@ -29,13 +18,11 @@ import li.cil.oc.api.network.EnvironmentHost
 import li.cil.oc.api.network.Visibility
 import li.cil.oc.api.prefab
 import li.cil.oc.common.tileentity
-import li.cil.oc.integration.Mods
 import li.cil.oc.integration.appeng.AEStackFactory
 import li.cil.oc.util.BlockPosition
 import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.InventoryUtils
 import li.cil.oc.util.ResultWrapper._
-import net.minecraft.init.Blocks
 import net.minecraft.item.ItemStack
 
 import scala.collection.convert.WrapAsJava._
@@ -45,17 +32,13 @@ import scala.collection.convert.WrapAsJava._
 // the output-side inventory can actually handle.
 object Actuator {
 
-  abstract class Common extends prefab.ManagedEnvironment with DeviceInfo {
+  abstract class Common extends prefab.ManagedEnvironment with DeviceInfo with traits.MENetworkTransfer with traits.GregTechMachineInfo with traits.RemotePayer {
     override val node = api.Network.newNode(this, Visibility.Network).
       withComponent("actuator").
       withConnector().
       create()
 
     def host: EnvironmentHost with tileentity.traits.OutputSide
-
-    protected def proxy: Option[AENetworkProxy]
-
-    protected def actionHost: IActionHost
 
     private final lazy val deviceInfo = Map(
       DeviceAttribute.Class -> DeviceClass.Generic,
@@ -67,7 +50,7 @@ object Actuator {
     override def getDeviceInfo: util.Map[String, String] = deviceInfo
 
     protected def onTransferContents(): Option[String] =
-      if (node.tryChangeBuffer(-Settings.get.actuatorCost)) None
+      if (payer.tryChangeBuffer(-Settings.get.actuatorCost)) None
       else Option("not enough energy")
 
     protected def position = BlockPosition(host)
@@ -109,94 +92,15 @@ object Actuator {
     }
 
     // ----------------------------------------------------------------------- //
-    // Further info about whatever's on the output side, as one snapshot table (geolyzer.analyze() idiom).
-
-    private def gtTileEntity(): Option[BaseMetaTileEntity] =
-      if (!Mods.GregTech.isAvailable) None
-      else host.world.getTileEntity(outputPos.x, outputPos.y, outputPos.z) match {
-        case mte: BaseMetaTileEntity => Some(mte)
-        case _ => None
-      }
-
-    private def gtMachine(): Option[IMetaTileEntity] = gtTileEntity().map(_.getMetaTileEntity)
-
-    private def circuitConfigurableMachine(): Option[IMetaTileEntity with IConfigurationCircuitSupport] =
-      gtMachine().collect { case ccs: IMetaTileEntity with IConfigurationCircuitSupport => ccs }
 
     @Callback(doc = """function():table -- Scan whatever's on the output side: name, position, and for GregTech machines also its meta tile ID, energy/activity/progress, circuit configuration, and (multiblocks only) efficiency/pollution/maintenance/owner/runtime if applicable.""")
-    def scanMachine(context: Context, args: Arguments): Array[AnyRef] = {
-      val pos = outputPos
-      val block = host.world.getBlock(pos.x, pos.y, pos.z)
-      if (block == Blocks.air) return result(Unit, "no block")
-      val metadata = host.world.getBlockMetadata(pos.x, pos.y, pos.z)
-
-      val info = new util.HashMap[String, AnyRef]()
-      info.put("name", gtMachine() match {
-        case Some(mte) => mte.getLocalName
-        case None => new ItemStack(block, 1, metadata).getDisplayName
-      })
-      info.put("x", Int.box(pos.x))
-      info.put("y", Int.box(pos.y))
-      info.put("z", Int.box(pos.z))
-      info.put("metadata", Int.box(metadata))
-
-      gtTileEntity().foreach { gte =>
-        info.put("metaTileId", Int.box(gte.getMetaTileID))
-        info.put("owner", gte.getOwnerName)
-        info.put("isActive", Boolean.box(gte.isActive))
-        info.put("isWorkAllowed", Boolean.box(gte.isAllowedToWork))
-        info.put("progress", Int.box(gte.getProgress))
-        info.put("maxProgress", Int.box(gte.getMaxProgress))
-        info.put("energyStored", Long.box(gte.getStoredEU))
-        info.put("energyCapacity", Long.box(gte.getEUCapacity))
-      }
-
-      // Multiblock-only concepts (pollution, maintenance, parallel efficiency, recipe count, total
-      // runtime) - same fields GregTech's own portable scanner (getInfoData) reports, mirrored here
-      // so a computer sees the same numbers a player would get from scanning the machine directly.
-      gtMachine().foreach {
-        case mte: MTEMultiBlockBase =>
-          info.put("energyUsage", Int.box(mte.mEUt))
-          info.put("maxInputVoltage", Long.box(mte.getMaxInputVoltage))
-          info.put("efficiency", Double.box(mte.mEfficiency / 100.0))
-          info.put("problems", Int.box(mte.getIdealStatus - mte.getRepairStatus))
-          info.put("pollution", Int.box(mte.getAveragePollutionPercentage))
-          info.put("recipesDone", Long.box(mte.recipesDone))
-          info.put("totalRunTime", Long.box(mte.getTotalRuntimeInTicks))
-        case _ =>
-      }
-
-      circuitConfigurableMachine().foreach { mte =>
-        val slot = mte.getCircuitSlot
-        if (slot >= 0 && slot < mte.getSizeInventory) {
-          val config = mte.getStackInSlot(slot) match {
-            case stack: ItemStack if stack.getItem.isInstanceOf[ItemIntegratedCircuit] => stack.getItemDamage
-            case _ => -1
-          }
-          info.put("circuitConfiguration", Int.box(config))
-        }
-      }
-
-      result(info)
-    }
+    def scanMachine(context: Context, args: Arguments): Array[AnyRef] = scanMachineAt(host.world, outputPos)
 
     // Doesn't fit scanMachine()'s read-only shape, but the ghost circuit needs a way to be set.
     @Callback(doc = """function(config:number):boolean -- Set the circuit configuration of the GregTech machine on the output side. Use -1 to remove the circuit.""")
     def setCircuitConfiguration(context: Context, args: Arguments): Array[AnyRef] = {
-      val mte = circuitConfigurableMachine().getOrElse(return result(Unit, "machine does not support circuit configuration"))
-      val slot = mte.getCircuitSlot
-      if (slot < 0 || slot >= mte.getSizeInventory) return result(Unit, "invalid circuit slot")
-
-      val config = args.checkInteger(0)
-      if (config == -1) {
-        mte.setInventorySlotContents(slot, null)
-        result(true)
-      }
-      else if (config >= 1 && config <= 24) {
-        mte.setInventorySlotContents(slot, GTUtility.getIntegratedCircuit(config))
-        result(true)
-      }
-      else result(Unit, s"invalid circuit configuration value: $config, must be 1-24 or -1")
+      val mte = gtMachine(host.world, outputPos).flatMap(circuitConfigurable).getOrElse(return result(Unit, "machine does not support circuit configuration"))
+      setCircuitConfiguration(mte, args.checkInteger(0))
     }
 
     // ----------------------------------------------------------------------- //
@@ -217,41 +121,7 @@ object Actuator {
       if (request == null) return result(Unit, "invalid filter")
 
       val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
-      val sinkSlot = args.optSlot(inventory, 2, -1)
-
-      val p = proxy.getOrElse(return result(Unit, "no ME network"))
-      try {
-        if (!p.isActive) return result(Unit, "no ME network")
-        val storage = p.getStorage.getItemInventory
-        val energy = p.getEnergy
-        val source = new MachineSource(actionHost)
-
-        // Simulate insertion first, then extract from the network and commit; any leftover goes back to the network.
-        val simulated = request.getItemStack
-        val fits =
-          if (sinkSlot < 0) InventoryUtils.insertIntoInventory(simulated, inventory, Option(outputSide.getOpposite), count, simulate = true)
-          else InventoryUtils.insertIntoInventorySlot(simulated, inventory, Option(outputSide.getOpposite), sinkSlot, count, simulate = true)
-        if (!fits) return result(0)
-
-        request.setStackSize(count - simulated.stackSize)
-        val extracted = Platform.poweredExtraction(energy, storage, request, source)
-        if (extracted == null || extracted.getStackSize == 0) return result(0)
-
-        val stack = extracted.getItemStack
-        var moved = stack.stackSize
-        if (sinkSlot < 0) InventoryUtils.insertIntoInventory(stack, inventory, Option(outputSide.getOpposite))
-        else InventoryUtils.insertIntoInventorySlot(stack, inventory, Option(outputSide.getOpposite), sinkSlot)
-        if (stack.stackSize > 0) {
-          moved -= stack.stackSize
-          val leftover = extracted.copy()
-          leftover.setStackSize(stack.stackSize)
-          storage.injectItems(leftover, Actionable.MODULATE, source)
-        }
-        result(moved)
-      }
-      catch {
-        case _: GridAccessException => result(Unit, "no ME network")
-      }
+      exportItemInto(request, count, inventory, outputSide.getOpposite, args.optSlot(inventory, 2, -1))
     }
 
     @Callback(doc = """function([count:number[, slot:number]]):number -- Import items from whatever is on the output side into the ME network.""")
@@ -263,27 +133,7 @@ object Actuator {
 
       val count = args.optItemCount(0)
       val inventory = InventoryUtils.inventoryAt(outputPos).getOrElse(return result(Unit, "no inventory"))
-      val sourceSlot = args.optSlot(inventory, 1, -1)
-
-      val p = proxy.getOrElse(return result(Unit, "no ME network"))
-      try {
-        if (!p.isActive) return result(Unit, "no ME network")
-        val storage = p.getStorage.getItemInventory
-        val energy = p.getEnergy
-        val source = new MachineSource(actionHost)
-
-        val consumer = (stack: ItemStack) => {
-          val leftover = Platform.poweredInsert(energy, storage, AEApi.instance.storage.createItemStack(stack), source)
-          stack.stackSize = if (leftover == null) 0 else leftover.getStackSize.toInt
-        }
-        val moved =
-          if (sourceSlot < 0) InventoryUtils.extractAnyFromInventory(consumer, inventory, outputSide.getOpposite, count)
-          else InventoryUtils.extractFromInventorySlot(consumer, inventory, outputSide.getOpposite, sourceSlot, count)
-        result(moved)
-      }
-      catch {
-        case _: GridAccessException => result(Unit, "no ME network")
-      }
+      importItemFrom(inventory, outputSide.getOpposite, args.optSlot(inventory, 1, -1), count)
     }
   }
 

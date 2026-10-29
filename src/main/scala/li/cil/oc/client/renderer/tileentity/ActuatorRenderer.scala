@@ -10,13 +10,14 @@ import net.minecraft.tileentity.TileEntity
 import net.minecraftforge.common.util.ForgeDirection
 import org.lwjgl.opengl.GL11
 
-// Draws a glow overlay on the facing side while the block is powered and has an ME channel.
+// Status light on the side facing away from the target (the one a player can see): dim while
+// powered, animated once the block also has an ME channel.
 object ActuatorRenderer extends TileEntitySpecialRenderer {
   override def renderTileEntityAt(tileEntity: TileEntity, x: Double, y: Double, z: Double, f: Float) {
     RenderState.checkError(getClass.getName + ".renderTileEntityAt: entering (aka: wasntme)")
 
-    val actuator = tileEntity.asInstanceOf[tileentity.Actuator]
-    if (actuator.isActive) {
+    val actuator = tileEntity.asInstanceOf[tileentity.traits.MENetworkNode with tileentity.traits.OutputSide]
+    if (actuator.isPowered) {
       GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS)
 
       RenderState.disableLighting()
@@ -30,7 +31,7 @@ object ActuatorRenderer extends TileEntitySpecialRenderer {
 
       bindTexture(TextureMap.locationBlocksTexture)
 
-      drawFacingFace(actuator.facing, Textures.Actuator.iconOn)
+      drawFacingFace(actuator.outputSide.getOpposite, if (actuator.isActive) Textures.Actuator.iconOn else Textures.Actuator.iconPowered)
 
       RenderState.enableLighting()
 

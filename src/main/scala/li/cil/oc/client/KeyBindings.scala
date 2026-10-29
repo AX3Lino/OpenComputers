@@ -1,6 +1,5 @@
 package li.cil.oc.client
 
-import cpw.mods.fml.client.FMLClientHandler
 import li.cil.oc.OpenComputers
 import net.minecraft.client.settings.GameSettings
 import net.minecraft.client.settings.KeyBinding
@@ -40,7 +39,8 @@ object KeyBindings {
     case _: Throwable => false
   }
 
-  def extendedTooltip = FMLClientHandler.instance.getClient.gameSettings.keyBindSneak
+  val extendedTooltip = new KeyBinding("key.extendedTooltip", Keyboard.KEY_LSHIFT, OpenComputers.Name)
+
 
   val materialCosts = new KeyBinding("key.materialCosts", Keyboard.KEY_NONE, OpenComputers.Name)
 

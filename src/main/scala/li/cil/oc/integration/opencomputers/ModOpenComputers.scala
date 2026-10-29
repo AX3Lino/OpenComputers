@@ -175,6 +175,7 @@ object ModOpenComputers extends ModProxy {
     api.Driver.add(DriverUpgradeMF)
     api.Driver.add(DriverUpgradeConfigurator)
     api.Driver.add(DriverActuator)
+    api.Driver.add(DriverVinculum)
 
     api.Driver.add(DriverAPU.Provider)
     api.Driver.add(DriverDataCard.Provider)
@@ -214,10 +215,12 @@ object ModOpenComputers extends ModProxy {
     api.Driver.add(InventoryProviderServer)
     api.Driver.add(DriverUpgradeConfigurator.Provider)
     api.Driver.add(DriverActuator.Provider)
+    api.Driver.add(DriverVinculum.Provider)
 
     blacklistHost(classOf[internal.Adapter],
       Constants.BlockName.Actuator,
       Constants.BlockName.DualActuator,
+      Constants.BlockName.Vinculum,
       Constants.BlockName.Geolyzer,
       Constants.BlockName.MotionSensor,
       Constants.BlockName.Keyboard,
@@ -253,6 +256,7 @@ object ModOpenComputers extends ModProxy {
     blacklistHost(classOf[internal.Drone],
       Constants.BlockName.Actuator,
       Constants.BlockName.DualActuator,
+      Constants.BlockName.Vinculum,
       Constants.BlockName.Keyboard,
       Constants.BlockName.ScreenTier1,
       Constants.BlockName.Transposer,
@@ -309,6 +313,7 @@ object ModOpenComputers extends ModProxy {
     blacklistHost(classOf[internal.Robot],
       Constants.BlockName.Actuator,
       Constants.BlockName.DualActuator,
+      Constants.BlockName.Vinculum,
       Constants.BlockName.Transposer,
       Constants.BlockName.CarpetedCapacitor,
       Constants.ItemName.Analyzer,
@@ -318,6 +323,7 @@ object ModOpenComputers extends ModProxy {
     blacklistHost(classOf[internal.Tablet],
       Constants.BlockName.Actuator,
       Constants.BlockName.DualActuator,
+      Constants.BlockName.Vinculum,
       Constants.BlockName.ScreenTier1,
       Constants.BlockName.Transposer,
       Constants.BlockName.CarpetedCapacitor,

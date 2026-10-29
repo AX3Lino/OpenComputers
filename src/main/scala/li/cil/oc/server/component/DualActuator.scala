@@ -1,12 +1,7 @@
 package li.cil.oc.server.component
 
-import appeng.api.AEApi
-import appeng.api.config.Actionable
 import appeng.api.networking.security.IActionHost
-import appeng.api.networking.security.MachineSource
 import appeng.api.storage.data.IAEFluidStack
-import appeng.me.GridAccessException
-import appeng.util.Platform
 import li.cil.oc.Constants
 import li.cil.oc.api.driver.DeviceInfo.DeviceAttribute
 import li.cil.oc.api.driver.DeviceInfo.DeviceClass
@@ -20,7 +15,6 @@ import li.cil.oc.util.ExtendedArguments._
 import li.cil.oc.util.FluidUtils
 import li.cil.oc.util.ResultWrapper._
 import net.minecraftforge.fluids.FluidContainerRegistry
-import net.minecraftforge.fluids.FluidStack
 import net.minecraftforge.fluids.FluidTankInfo
 
 import scala.collection.convert.WrapAsJava._
@@ -81,40 +75,7 @@ object DualActuator {
       if (request == null) return result(Unit, "invalid filter")
 
       val handler = FluidUtils.fluidHandlerAt(outputPos).getOrElse(return result(Unit, "no tank"))
-
-      val p = proxy.getOrElse(return result(Unit, "no ME network"))
-      try {
-        if (!p.isActive) return result(Unit, "no ME network")
-        val storage = p.getStorage.getFluidInventory
-        val energy = p.getEnergy
-        val source = new MachineSource(actionHost)
-
-        val simulated = request.getFluidStack
-
-        // Forge's IFluidHandler.fill can't target a specific tank directly - best effort: reject up
-        // front if the requested tank already holds a different, incompatible fluid.
-        val tank = args.optTankInfo(handler, outputSide.getOpposite, 2, null)
-        if (tank != null && tank.fluid != null && !tank.fluid.isFluidEqual(simulated)) return result(false, 0)
-
-        val fits = handler.fill(outputSide.getOpposite, simulated, false)
-        if (fits <= 0) return result(false, 0)
-
-        request.setStackSize(fits)
-        val extracted = Platform.poweredExtraction(energy, storage, request, source)
-        if (extracted == null || extracted.getStackSize == 0) return result(false, 0)
-
-        val stack = extracted.getFluidStack
-        val filled = handler.fill(outputSide.getOpposite, stack, true)
-        if (filled < stack.amount) {
-          val leftover = extracted.copy()
-          leftover.setStackSize(stack.amount - filled)
-          storage.injectItems(leftover, Actionable.MODULATE, source)
-        }
-        result(filled > 0, filled)
-      }
-      catch {
-        case _: GridAccessException => result(Unit, "no ME network")
-      }
+      exportFluidInto(request, handler, outputSide.getOpposite, args.optTankInfo(handler, outputSide.getOpposite, 2, null))
     }
 
     @Callback(doc = """function([count:number[, tank:number]]):boolean, number -- Import fluid from whatever is on the output side into the ME network. Returns operation result and drained amount.""")
@@ -126,36 +87,7 @@ object DualActuator {
 
       val count = args.optFluidCount(0)
       val handler = FluidUtils.fluidHandlerAt(outputPos).getOrElse(return result(Unit, "no tank"))
-      val drainSide = outputSide.getOpposite
-
-      val p = proxy.getOrElse(return result(Unit, "no ME network"))
-      try {
-        if (!p.isActive) return result(Unit, "no ME network")
-        val storage = p.getStorage.getFluidInventory
-        val energy = p.getEnergy
-        val source = new MachineSource(actionHost)
-
-        val sourceTank = args.optTankInfo(handler, drainSide, 1, null)
-        val simulated =
-          if (sourceTank == null) handler.drain(drainSide, count, false)
-          else if (sourceTank.fluid == null) null
-          else {
-            val fluid = sourceTank.fluid.copy()
-            fluid.amount = count
-            handler.drain(drainSide, fluid, false)
-          }
-        if (simulated == null || simulated.amount <= 0) return result(false, 0)
-
-        val leftover = Platform.poweredInsert(energy, storage, AEApi.instance.storage.createFluidStack(simulated.copy()), source)
-        val accepted = simulated.amount - (if (leftover == null) 0 else leftover.getStackSize.toInt)
-        if (accepted <= 0) return result(false, 0)
-
-        handler.drain(drainSide, new FluidStack(simulated.getFluid, accepted), true)
-        result(true, accepted)
-      }
-      catch {
-        case _: GridAccessException => result(Unit, "no ME network")
-      }
+      importFluidFrom(handler, outputSide.getOpposite, args.optTankInfo(handler, outputSide.getOpposite, 1, null), count)
     }
   }
 

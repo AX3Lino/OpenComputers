@@ -23,5 +23,6 @@ object ModGregtech extends ModProxy {
     Driver.add(new DriverBECDiode)
 
     RecipeHandler.init()
+    CoverNanoprobe.register()
   }
 }

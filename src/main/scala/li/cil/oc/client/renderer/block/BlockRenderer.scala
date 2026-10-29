@@ -1,5 +1,7 @@
 package li.cil.oc.client.renderer.block
 
+import li.cil.oc.client.Textures
+
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRH
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler
 import li.cil.oc.Settings
@@ -78,6 +80,12 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
         tessellator.startDrawingQuads()
         Transposer.render(block, metadata, renderer)
+        tessellator.draw()
+
+      case _: common.block.Vinculum =>
+        GL11.glTranslatef(-0.5f, -0.5f, -0.5f)
+        tessellator.startDrawingQuads()
+        Vinculum.render(block, renderer)
         tessellator.draw()
 
       case _: common.block.Actuator =>
@@ -161,6 +169,17 @@ object BlockRenderer extends ISimpleBlockRenderingHandler {
         Transposer.render(block, x, y, z, renderer)
 
         true
+      case vinculum: common.tileentity.Vinculum =>
+        val crystal = vinculum.hubState match {
+          case 1 => Textures.Vinculum.iconCrystalHub
+          case 2 => Textures.Vinculum.iconCrystalHubConflict
+          case 0 => Textures.Vinculum.iconCrystalHubOffline
+          case _ =>
+            if (vinculum.isActive) Textures.Vinculum.iconCrystalActive
+            else if (vinculum.isCabled || vinculum.isPowered) Textures.Vinculum.iconCrystalWarning
+            else Textures.Vinculum.iconCrystal
+        }
+        Vinculum.render(block, vinculum.facing, crystal, x, y, z, renderer)
       case actuator: common.tileentity.Actuator =>
         setActuatorUvRotate(renderer, actuator.facing)
         val result = renderer.renderStandardBlock(block, x, y, z)

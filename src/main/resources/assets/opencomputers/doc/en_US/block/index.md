@@ -22,7 +22,10 @@ Keep in mind that some of these may not be available, depending on the recipe se
 * [RAID](raid.md)
 
 ### Extensions
+* [Actuator](actuator.md)
 * [Adapter](adapter.md)
+* [Vinculum](vinculum.md)
+* [Dual Actuator](dualActuator.md)
 * [Geolyzer](geolyzer.md)
 * [Motion Sensor](motionSensor.md)
 * [Redstone I/O](redstone.md)

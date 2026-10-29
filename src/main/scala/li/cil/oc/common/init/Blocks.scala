@@ -12,6 +12,7 @@ object Blocks {
   def init() {
     GameRegistry.registerTileEntity(classOf[tileentity.AccessPoint], Settings.namespace + "access_point")
     GameRegistry.registerTileEntity(classOf[tileentity.Actuator], Settings.namespace + "actuator")
+    GameRegistry.registerTileEntity(classOf[tileentity.Vinculum], Settings.namespace + "vinculum")
     GameRegistry.registerTileEntity(classOf[tileentity.Adapter], Settings.namespace + "adapter")
     GameRegistry.registerTileEntityWithAlternatives(classOf[tileentity.Assembler], Settings.namespace + "assembler", Settings.namespace + "robotAssembler")
     GameRegistry.registerTileEntity(classOf[tileentity.Cable], Settings.namespace + "cable")
@@ -46,6 +47,7 @@ object Blocks {
     // Recipes are placeholders registered by NewHorizonsCoreMod (GT assembler) until final ones are decided.
     Items.registerBlock(new Actuator(), Constants.BlockName.Actuator)
     Items.registerBlock(new DualActuator(), Constants.BlockName.DualActuator)
+    Items.registerBlock(new Vinculum(), Constants.BlockName.Vinculum)
     Recipes.addBlock(new Adapter(), Constants.BlockName.Adapter, "oc:adapter")
     Recipes.addBlock(new Assembler(), Constants.BlockName.Assembler, "oc:assembler")
     Recipes.addBlock(new Cable(), Constants.BlockName.Cable, "oc:cable")

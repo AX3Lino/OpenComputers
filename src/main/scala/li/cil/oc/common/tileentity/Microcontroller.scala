@@ -136,24 +136,25 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   }
 
   // ----------------------------------------------------------------------- //
-  // With an actuator upgrade, a channel-requiring node replaces the power-only one from traits.power.AppliedEnergistics2, which addresses its own via UNKNOWN.
+  // With an actuator or vinculum upgrade, a channel-requiring node replaces the power-only one from traits.power.AppliedEnergistics2, which addresses its own via UNKNOWN.
 
-  private def isActuatorUpgrade(stack: ItemStack) = stack != null && {
-    val descriptor = api.Items.get(stack)
-    descriptor == api.Items.get(Constants.BlockName.Actuator) || descriptor == api.Items.get(Constants.BlockName.DualActuator)
-  }
+  private def hasUpgrade(names: String*) = info.components.exists(stack => stack != null && names.exists(name => api.Items.get(stack) == api.Items.get(name)))
 
-  def hasActuatorUpgrade = info.components.exists(isActuatorUpgrade)
+  def hasMEUpgrade = hasUpgrade(Constants.BlockName.Actuator, Constants.BlockName.DualActuator, Constants.BlockName.Vinculum)
 
+  // Contents are fixed at assembly, so the idle draw is settled when the node is first built; upgrades sharing it share one channel.
   private lazy val actuatorProxy = {
-    val proxy = new AENetworkProxy(this, "actuatorProxy", api.Items.get(Constants.BlockName.Actuator).createItemStack(1), true)
+    val shown = if (hasUpgrade(Constants.BlockName.Vinculum)) Constants.BlockName.Vinculum else Constants.BlockName.Actuator
+    val proxy = new AENetworkProxy(this, "actuatorProxy", api.Items.get(shown).createItemStack(1), true)
     proxy.setFlags(GridFlags.REQUIRE_CHANNEL)
-    proxy.setIdlePowerUsage(Settings.get.actuatorIdleAEPower)
+    proxy.setIdlePowerUsage(
+      (if (hasUpgrade(Constants.BlockName.Actuator, Constants.BlockName.DualActuator)) Settings.get.actuatorIdleAEPower else 0) +
+      (if (hasUpgrade(Constants.BlockName.Vinculum)) Settings.get.vinculumIdleAEPower else 0))
     proxy.setValidSides(util.EnumSet.complementOf(util.EnumSet.of(ForgeDirection.UNKNOWN)))
     proxy
   }
 
-  private def actuatorNodeActive = hasActuatorUpgrade && actuatorProxy.isReady
+  private def actuatorNodeActive = hasMEUpgrade && actuatorProxy.isReady
 
   override def getProxy: AENetworkProxy = actuatorProxy
 
@@ -169,12 +170,12 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
   override def gridChanged() {}
 
   override def securityBreak() {
-    if (hasActuatorUpgrade) actuatorProxy.invalidate()
+    if (hasMEUpgrade) actuatorProxy.invalidate()
     super.securityBreak()
   }
 
   // Components aren't loaded yet when initialize() runs on placement, so this is scheduled a tick later.
-  private def syncActuatorProxy(): Unit = if (isServer && !isInvalid && hasActuatorUpgrade && !actuatorProxy.isReady) {
+  private def syncActuatorProxy(): Unit = if (isServer && !isInvalid && hasMEUpgrade && !actuatorProxy.isReady) {
     super.securityBreak()
     actuatorProxy.onReady()
   }
@@ -186,7 +187,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
 
   override def dispose() {
     super.dispose()
-    if (isServer && hasActuatorUpgrade) actuatorProxy.invalidate()
+    if (isServer && hasMEUpgrade) actuatorProxy.invalidate()
   }
 
   // ----------------------------------------------------------------------- //
@@ -275,7 +276,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
     }
     snooperNode.load(nbt.getCompoundTag(Settings.namespace + "snooper"))
     super.readFromNBTForServer(nbt)
-    if (hasActuatorUpgrade) actuatorProxy.readFromNBT(nbt)
+    if (hasMEUpgrade) actuatorProxy.readFromNBT(nbt)
     api.Network.joinNewNetwork(machine.node)
     machine.node.connect(snooperNode)
   }
@@ -292,7 +293,7 @@ class Microcontroller extends traits.PowerAcceptor with traits.Hub with traits.C
       case _ => new NBTTagCompound()
     })
     nbt.setNewCompoundTag(Settings.namespace + "snooper", snooperNode.save)
-    if (hasActuatorUpgrade) actuatorProxy.writeToNBT(nbt)
+    if (hasMEUpgrade) actuatorProxy.writeToNBT(nbt)
   }
 
   // ----------------------------------------------------------------------- //

@@ -7,6 +7,7 @@ object Constants {
   object BlockName {
     final val AccessPoint = "accessPoint"
     final val Actuator = "actuator"
+    final val Vinculum = "vinculum"
     final val Adapter = "adapter"
     final val Assembler = "assembler"
     final val Cable = "cable"
@@ -131,6 +132,8 @@ object Constants {
     final val MicrocontrollerCaseTier1 = "microcontrollerCase1"
     final val MicrocontrollerCaseTier2 = "microcontrollerCase2"
     final val Nanomachines = "nanomachines"
+    final val NanoprobeFluid = "nanoprobeFluid"
+    final val NanoprobeItem = "nanoprobeItem"
     final val NavigationUpgrade = "navigationUpgrade"
     final val NetworkCard = "lanCard"
     final val NumPad = "numPad"

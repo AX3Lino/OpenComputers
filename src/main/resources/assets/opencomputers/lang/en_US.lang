@@ -7,6 +7,7 @@ tile.oc.accessPoint.name=§cAccess Point§7
 tile.oc.actuator.name=Actuator
 tile.oc.adapter.name=Adapter
 tile.oc.assembler.name=Electronics Assembler
+tile.oc.vinculum.name=Vinculum
 tile.oc.cable.name=Cable
 tile.oc.capacitor.name=Capacitor
 tile.oc.carpetedCapacitor.name=Carpeted Capacitor
@@ -113,6 +114,8 @@ item.oc.MicrocontrollerCase1.name=Microcontroller Case (Tier 2)
 # Deprecated and overwritten
 # item.oc.MicrocontrollerCase3.name=Microcontroller Case (Creative)
 item.oc.Nanomachines.name=Nanomachines
+item.oc.NanoprobeFluid.name=Nanoprobe Cover (Fluids)
+item.oc.NanoprobeItem.name=Nanoprobe Cover (Items)
 item.oc.NetworkCard.name=Network Card
 item.oc.NumPad.name=Numeric Keypad
 item.oc.Present.name=A little something...
@@ -277,17 +280,20 @@ oc:container.TabletWrapper=Tablet
 
 # Keybinds
 key.clipboardPaste=Paste Clipboard
+key.extendedTooltip=Show Extended Tooltip
 key.materialCosts=Show Material Costs
 
 # Item / Block Tooltips
 oc:tooltip.AccessPoint=Acts like a Switch, but additionally receives wireless packets and relays wired packets wirelessly.
 oc:tooltip.AbstractBusCard=Allows interacting with §fStargateTech 2§7's abstract bus by sending and receiving LIP packets.
 oc:tooltip.Acid=A highly toxic pseudo-liquid, usually only consumed by certain pirates. May prove to be useful in other ways, too, however.
+oc:tooltip.Actuator=Connects the ME network it is cabled into to the single block it faces: moves items in and out, scans it like a portable scanner and sets its circuit. Also installs into a microcontroller.
 oc:tooltip.Adapter=Used to control non-component blocks, such as vanilla blocks or blocks from other mods.
 oc:tooltip.ALU=Adds numbers so you don't have to. It might be better this way.
 oc:tooltip.Analyzer=Used to display information about blocks, such as their §faddress§7 and §fcomponent name§7.[nl] Also displays the error that caused a computer to crash if it did not shut down normally.
 oc:tooltip.APU=This is a CPU with an integrated GPU (or IGP), when you just need that extra card slot.[nl] Supported components: §f%s§7[nl] Maximum resolution: §f%sx%s§7[nl] Maximum color depth: §f%s§7[nl] Operations/tick: §f%s§7
 oc:tooltip.Assembler=Allows constructing robots and other devices from a number of different computer parts.
+oc:tooltip.Vinculum=Takes over the GregTech machine it faces: reads it, flips its switches and, on a multiblock, configures and feeds the buses and hatches marked with nanoprobe covers from the ME network it is cabled into.
 oc:tooltip.Cable=A cheap way of connecting blocks.
 oc:tooltip.Capacitor=Stores energy for later use. Can be filled and emptied very quickly.
 oc:tooltip.CarpetedCapacitor=Stores energy for later use. Can be filled and emptied very quickly. Charges when Sheep or Ocelots walk on it
@@ -311,6 +317,7 @@ oc:tooltip.DiamondChip=A small piece of a once radiant diamond. It will never be
 oc:tooltip.Disassembler=Separates items into their original components. §lWarning§7: returned items have a %s%% chance of breaking in the process!
 oc:tooltip.Disk=Primitive medium that can be used to build persistent storage devices.
 oc:tooltip.DiskDrive.CC=ComputerCraft floppies are §asupported§7.
+oc:tooltip.DualActuator=An Actuator that also moves fluids between the ME network and the tank it faces.
 oc:tooltip.DiskDrive=Allows reading and writing floppies. Can be installed in robots to allow inserting floppies later on.
 oc:tooltip.DiskDriveMountable=Provides the same functionality as a normal disk drive, but must be installed in a rack.
 oc:tooltip.DiskUsage=Disk usage: %s/%s Byte
@@ -343,6 +350,8 @@ oc:tooltip.Microcontroller=Microcontrollers are computers boiled down to the ess
 oc:tooltip.MicrocontrollerCase=Base component for building microcontrollers. Place it into an assembler to add further components and assemble a microcontroller.
 oc:tooltip.MotionSensor=Can detect movement of nearby living beings. Requires clear line-of-sight.
 oc:tooltip.Nanomachines=Control unit and a bunch of nanomachines for ingestion, if you dare.
+oc:tooltip.NanoprobeFluid=Placed on the front of a multiblock's hatch, lets a Vinculum on the controller configure it and move fluids through it.
+oc:tooltip.NanoprobeItem=Placed on the front of a multiblock's bus, lets a Vinculum on the controller configure it and move items through it.
 oc:tooltip.NetworkCard=Allows distant computers connected by other blocks (such as cable) to communicate by sending messages to each other.
 oc:tooltip.PowerAcceptor=Energy conversion speed: §f%s/t§7
 oc:tooltip.PowerConverter.BuildCraft=§fBuildCraft MJ§7: §a%s:%s§7

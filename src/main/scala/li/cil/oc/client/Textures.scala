@@ -78,6 +78,7 @@ object Textures {
 
   object Actuator {
     var iconOn: IIcon = _
+    var iconPowered: IIcon = _
   }
 
   object Adapter {
@@ -90,6 +91,21 @@ object Textures {
 
   object Microcontroller {
     var iconOutput: IIcon = _
+  }
+
+  object Vinculum {
+    var iconFrame: IIcon = _
+    var iconCrystal: IIcon = _
+    var iconCrystalWarning: IIcon = _
+    var iconCrystalActive: IIcon = _
+    var iconCrystalHub: IIcon = _
+    var iconCrystalHubConflict: IIcon = _
+    var iconCrystalHubOffline: IIcon = _
+  }
+
+  object Nanoprobe {
+    var iconItem: IIcon = _
+    var iconFluid: IIcon = _
   }
 
   object Charger {
